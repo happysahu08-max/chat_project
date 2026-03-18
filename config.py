@@ -1,11 +1,11 @@
-# config.py
-MYSQL_HOST="localhost"
-MYSQL_USER="root"
-MYSQL_PASSWORD="12345"
-MYSQL_DB="flask_chat"
+MYSQL_HOST = "junction.proxy.rlwy.net"
+MYSQL_PORT = 55650
+MYSQL_USER = "root"
+MYSQL_PASSWORD = "kylxUEXjelhyaCLnTWCgYZepVrSqqogk"
+MYSQL_DB = "railway"
+
 RAZORPAY_KEY = "rzp_live_SPUMKvfYxCwjaX"
 RAZORPAY_SECRET = "BxyKivqPt1uc8SQ4HvPiqXw2"
 
-# ZegoCloud Configuration
 ZEGO_APP_ID = 2078545606
 ZEGO_SERVER_SECRET = "882ef004c70dc9bb28eaaf177f33b0fd5f332599"
