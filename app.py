@@ -19,6 +19,7 @@ app.config['MYSQL_HOST'] = config.MYSQL_HOST
 app.config['MYSQL_USER'] = config.MYSQL_USER
 app.config['MYSQL_PASSWORD'] = config.MYSQL_PASSWORD
 app.config['MYSQL_DB'] = config.MYSQL_DB
+app.config['MYSQL_PORT'] = config.MYSQL_PORT
 
 mysql = MySQL(app)
 
@@ -541,5 +542,98 @@ def wallet():
 
     return jsonify({"balance": float(balance)})
 
+
+
+
+def create_tables():
+    cur = mysql.connection.cursor()
+
+    # USERS TABLE
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100),
+        email VARCHAR(100),
+        password VARCHAR(100),
+        role VARCHAR(20),
+        wallet DECIMAL(10,2) DEFAULT 0,
+        photo VARCHAR(255),
+        rating FLOAT DEFAULT 4.5,
+        price_per_min INT DEFAULT 10,
+        online_status TINYINT DEFAULT 1
+    )
+    """)
+
+    # OTHER TABLES
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        sender_id INT,
+        receiver_id INT,
+        message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS calls (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        caller_id INT,
+        receiver_id INT,
+        status VARCHAR(20),
+        start_time DATETIME,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        call_type VARCHAR(10)
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS payments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT,
+        amount INT,
+        razorpay_payment_id VARCHAR(200),
+        status VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS appointments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT,
+        admin_id INT,
+        appointment_time DATETIME,
+        status VARCHAR(50)
+    )
+    """)
+
+    # DEFAULT USERS (NO DUPLICATE)
+    cur.execute("""
+    INSERT IGNORE INTO users(name,email,password,role,wallet)
+    VALUES('Admin','admin@gmail.com','admin123','admin',0)
+    """)
+
+    cur.execute("""
+    INSERT IGNORE INTO users(name,email,password,role,wallet)
+    VALUES('User1','user@gmail.com','1234','user',10)
+    """)
+
+    cur.execute("""
+    INSERT IGNORE INTO users(name,email,password,role)
+    VALUES
+    ('Krushna','krushna@gmail.com','krushna123','admin'),
+    ('Rahul','rahul@gmail.com','rahul123','admin'),
+    ('Amit','amit@gmail.com','amit123','admin')
+    """)
+
+    mysql.connection.commit()
+    cur.close()
+
+import os
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    with app.app_context():
+        create_tables()
+
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
