@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>User - Video Calling System</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 800px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 8px;
+                align-items: flex-start;
+            }
+            .container {
+                padding: 15px;
+            }
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            .balance-box {
+                margin: 10px auto;
+            }
+            .action-buttons > div {
+                flex-direction: column !important;
+            }
+            button {
+                width: 100%;
+                margin: 5px 0 !important;
+            }
+            select, input {
+                width: 100% !important;
+            }
+            #videoContainer {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+            }
+            #videoContainer video {
+                width: 45%;
+                height: auto;
+            }
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+        }
+        
+        .header h2 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 24px;
+        }
+        
+        #connectionStatus {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border-radius: 30px;
+            display: inline-block;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-connected { 
+            background-color: #28a745;
+            box-shadow: 0 0 10px #28a745;
+        }
+        
+        .status-disconnected { 
+            background-color: #dc3545;
+            box-shadow: 0 0 10px #dc3545;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        .balance-box {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            margin: 10px 0;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            display: inline-block;
+        }
+        
+        #chat { 
+            height: 300px; 
+            overflow: auto; 
+            border: 1px solid #e0e0e0; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            border-radius: 12px;
+            background: #fafafa;
+        }
+        
+        button { 
+            padding: 12px 24px; 
+            margin: 5px; 
+            cursor: pointer; 
+            border-radius: 12px; 
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        input, select { 
+            padding: 12px; 
+            width: 300px; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 12px; 
+            font-size: 14px;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+        
+        .message-input {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .message-input input {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        
+        #videoContainer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 15px;
+            max-width: 500px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        #videoContainer video {
+            width: 200px;
+            height: 150px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 3px solid #667eea;
+            background: #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        #callTimer { 
+            font-size: 18px; 
+            font-weight: bold; 
+            color: #28a745; 
+            display: none;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            padding: 15px;
+            border-radius: 12px;
+            margin: 10px 0;
+            text-align: center;
+            border: 2px solid #28a745;
+        }
+        
+        .audio-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        .audio-wave {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 30px;
+        }
+
+        .wave-bar {
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            animation: wave 0.5s infinite ease-in-out;
+            border-radius: 2px;
+        }
+
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes wave {
+            0%, 100% { height: 20px; }
+            50% { height: 40px; }
+        }
+
+        .audio-status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .audio-active { 
+            background-color: #28a745; 
+            animation: pulse 1s infinite;
+        }
+        
+        .audio-inactive { 
+            background-color: #dc3545; 
+        }
+
+        .test-audio-btn {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .test-audio-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
+        }
+        
+        #ringingScreen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            z-index: 9999;
+            text-align: center;
+            padding-top: 120px;
+        }
+
+        #ringingScreen h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        #ringingScreen div[style*="font-size:120px"] {
+            font-size: 120px !important;
+            margin: 30px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        #ringingScreen button {
+            background: white;
+            color: #dc3545;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            min-width: 200px;
+        }
+        
+        #ringtone {
+            display: none;
+        }
+        
+        .action-buttons {
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div>
+            <h2>🎧 User: {{ username }}</h2>
+            <div id="connectionStatus">
+                <span class="status-indicator status-disconnected" id="callStatusIndicator"></span>
+                <span id="callStatusText">Not in call</span>
+            </div>
+        </div>
+        <div style="text-align:right;">
+            <div class="balance-box">
+                💰 Balance: ₹<span id="balance">0</span>
+            </div>
+            <a href="/logout" style="color: #dc3545; text-decoration: none; font-weight: bold; padding: 8px 20px; border: 2px solid #dc3545; border-radius: 30px; display: inline-block;">🚪 Logout</a>
+        </div>
+    </div>
+
+    <div class="action-buttons">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button onclick="recharge(30)" class="btn-warning" style="flex: 1;">💳 ₹30</button>
+            <button onclick="recharge(50)" class="btn-warning" style="flex: 1;">💳 ₹50</button>
+            <button onclick="recharge(100)" class="btn-warning" style="flex: 1;">💳 ₹100</button>
+            <input type="number" id="customAmount" placeholder="Custom ₹" style="width:120px;">
+            <button onclick="customRecharge()" class="btn-primary">Recharge</button>
+        </div>
+        
+        <div style="display:flex;gap:10px;flex-wrap:wrap; margin-top: 10px;">
+            <input type="datetime-local" id="time" style="flex: 2;">
+            <button onclick="book()" class="btn-info" style="flex: 1;">📅 Book</button>
+        </div>
+    </div>
+    
+    <div style="margin: 15px 0;">
+        <label for="adminSelect">Select Admin:</label>
+        <select id="adminSelect">
+            {% for a in admins %}
+            <option value="{{ a[0] }}">{{ a[1] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div id="chat"></div>
+
+    <div class="message-input">
+        <input id="msg" placeholder="Type message...">
+        <button onclick="sendMsg()" class="btn-success">📤 Send</button>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin: 10px 0;">
+        <button onclick="callAdmin(false)" class="btn-primary" style="flex: 1; padding: 15px;">
+            📞 Audio Call
+        </button>
+        <button onclick="callAdmin(true)" class="btn-info" style="flex: 1; padding: 15px;">
+            📹 Video Call
+        </button>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin: 10px 0;">
+        <button id="endCallBtn" onclick="endCall()" class="btn-danger" style="display: none; flex: 1;">🔴 End Call</button>
+    </div>
+    
+    <div id="callTimer">
+        ⏱ Call Time: <span id="timer">00:00</span>
+    </div>
+    
+    <!-- Audio Status Panel -->
+    <div id="audioPanel" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 15px;">
+        <h4 style="margin:0 0 15px 0; color: #333;">🔊 Audio Status</h4>
+        
+        <div class="audio-indicator">
+            <span style="min-width: 100px;">Your microphone:</span>
+            <span class="audio-status" id="micStatus"></span>
+            <span id="micText">Not connected</span>
+            <button onclick="testMic()" class="test-audio-btn">Test Mic</button>
+        </div>
+        
+        <div class="audio-indicator">
+            <span style="min-width: 100px;">Admin audio:</span>
+            <span class="audio-status" id="speakerStatus"></span>
+            <span id="speakerText">Waiting for admin...</span>
+            <div class="audio-wave" id="audioWave" style="display: none;">
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+            </div>
+        </div>
+        
+        <div id="audioLevel" style="margin-top: 15px; font-size: 12px; color: #666; padding: 10px; background: #fff; border-radius: 8px; text-align: center;">
+            Audio level: 0%
+        </div>
+    </div>
+
+    <!-- Test Audio Buttons -->
+    <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <button onclick="playTestSound()" class="btn-info" style="flex: 1;">🔊 Test Sound</button>
+        <button onclick="testCamera()" class="btn-primary" style="flex: 1;">📷 Test Camera</button>
+    </div>
+</div>
+
+<!-- Video container for calls -->
+<div id="videoContainer" style="display: none;">
+    <video id="localVideo" autoplay muted playsinline></video>
+    <video id="remoteVideo" autoplay playsinline></video>
+</div>
+
+<!-- CALL RINGING SCREEN -->
+<div id="ringingScreen">
+    <h2>📞 Calling Admin...</h2>
+    <div style="font-size:120px;">👨‍💼</div>
+    <div id="ringingName" style="font-size:28px;margin-bottom:50px;">
+        <span id="ringingAdminName">Admin</span>
+        <br>
+        <small id="callTypeDisplay" style="font-size:16px; opacity:0.8;">📞 Audio Call</small>
+    </div>
+    <button onclick="cancelCall()">❌ Cancel</button>
+</div>
+
+<audio id="ringtone" loop>
+    <source src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" type="audio/ogg">
+</audio>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+// ============================================
+// USER APPLICATION - WEBRTC VIDEO CALLING
+// ============================================
+
+// Configuration
+const configuration = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' }
+    ]
+};
+
+// State variables
+let localStream = null;
+let remoteStream = null;
+let peerConnection = null;
+let selectedAdmin = document.getElementById("adminSelect").value;
+let isInCall = false;
+let timerInterval = null;
+let seconds = 0;
+let signalingInterval = null;
+let callStatusInterval = null;
+let currentCallType = 'audio';
+let currentCallId = null;
+
+// Audio visualization
+let audioContext = null;
+let analyser = null;
+let source = null;
+let animationFrame = null;
+
+// DOM elements
+const chatBox = document.getElementById("chat");
+const msgInput = document.getElementById("msg");
+const balanceSpan = document.getElementById("balance");
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
+const videoContainer = document.getElementById("videoContainer");
+const callTimer = document.getElementById("callTimer");
+const timerDisplay = document.getElementById("timer");
+const endCallBtn = document.getElementById("endCallBtn");
+const audioPanel = document.getElementById("audioPanel");
+const micStatus = document.getElementById("micStatus");
+const micText = document.getElementById("micText");
+const speakerStatus = document.getElementById("speakerStatus");
+const speakerText = document.getElementById("speakerText");
+const audioWave = document.getElementById("audioWave");
+const audioLevel = document.getElementById("audioLevel");
+const ringingScreen = document.getElementById("ringingScreen");
+const ringingAdminName = document.getElementById("ringingAdminName");
+const callTypeDisplay = document.getElementById("callTypeDisplay");
+const ringtone = document.getElementById("ringtone");
+const callStatusIndicator = document.getElementById("callStatusIndicator");
+const callStatusText = document.getElementById("callStatusText");
+
+// Initialize
+window.onload = function() {
+    console.log("User app initialized");
+    
+    loadWallet();
+    startPolling();
+    
+    document.getElementById("adminSelect").addEventListener("change", function() {
+        selectedAdmin = this.value;
+        loadChat();
+    });
+    
+    // Check media permissions
+    checkMediaPermissions();
+    
+    // Ping server every 30 seconds
+    setInterval(pingServer, 30000);
+};
+
+function startPolling() {
+    // Load messages every 2 seconds
+    setInterval(loadChat, 2000);
+    
+    // Check signaling events every 1 second
+    signalingInterval = setInterval(checkSignalingEvents, 1000);
+    
+    // Check wallet and call status every 2 seconds
+    setInterval(() => {
+        loadWallet();
+        checkRemoteCallEnd();
+    }, 2000);
+}
+
+async function pingServer() {
+    try {
+        await fetch("/api/ping", { method: "POST" });
+    } catch (err) {
+        console.error("Ping failed:", err);
+    }
+}
+
+function updateCallStatus(status) {
+    if (status === 'connected') {
+        callStatusIndicator.className = 'status-indicator status-connected';
+        callStatusText.innerText = 'In call';
+    } else {
+        callStatusIndicator.className = 'status-indicator status-disconnected';
+        callStatusText.innerText = 'Not in call';
+    }
+}
+
+function startTimer() {
+    callTimer.style.display = "block";
+    seconds = 0;
+    timerDisplay.innerText = "00:00";
+    
+    if (timerInterval) clearInterval(timerInterval);
+    
+    timerInterval = setInterval(() => {
+        seconds++;
+        let mins = Math.floor(seconds / 60);
+        let secs = seconds % 60;
+        timerDisplay.innerText = 
+            String(mins).padStart(2, '0') + ":" + String(secs).padStart(2, '0');
+    }, 1000);
+}
+
+function stopTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    seconds = 0;
+    timerDisplay.innerText = "00:00";
+    callTimer.style.display = "none";
+}
+
+async function sendMsg() {
+    if (!selectedAdmin) {
+        alert("Select an admin first");
+        return;
+    }
+
+    const message = msgInput.value.trim();
+    if (!message) return;
+
+    try {
+        const formData = new URLSearchParams();
+        formData.append("receiver", selectedAdmin);
+        formData.append("message", message);
+
+        await fetch("/send", {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body: formData
+        });
+        
+        msgInput.value = "";
+    } catch (err) {
+        console.error("Failed to send message:", err);
+        alert("Failed to send message");
+    }
+}
+
+async function loadChat() {
+    if (!selectedAdmin) return;
+
+    try {
+        const response = await fetch("/messages/" + selectedAdmin);
+        const data = await response.json();
+        
+        chatBox.innerHTML = "";
+        data.forEach(m => {
+            const isMe = m[0] === 'User1' || m[0] === 'User' || m[0] === '{{ username }}';
+            const align = isMe ? 'right' : 'left';
+            const bgColor = isMe ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f5f5f5';
+            const textColor = isMe ? 'white' : '#333';
+            
+            chatBox.innerHTML += `
+                <div style="text-align:${align}; margin:8px 0;">
+                    <span style="background:${bgColor}; color:${textColor}; padding:10px 18px; border-radius:${isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px'}; display:inline-block; max-width:80%; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <b>${m[0]}:</b> ${m[1]}
+                    </span>
+                </div>
+            `;
+        });
+        
+        chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (err) {
+        console.error("Failed to load messages:", err);
+    }
+}
+
+async function checkSignalingEvents() {
+    if (!isInCall) return;
+    
+    try {
+        const response = await fetch("/webrtc/events");
+        const events = await response.json();
+        
+        for (const event of events) {
+            await handleSignalingEvent(event);
+        }
+    } catch (err) {
+        console.error("Failed to check signaling events:", err);
+    }
+}
+
+async function handleSignalingEvent(event) {
+    console.log("Signaling event:", event);
+    
+    switch (event.type) {
+        case "offer":
+            if (peerConnection) {
+                try {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(event.offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    
+                    await fetch("/webrtc/answer", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({
+                            target: event.from,
+                            answer: peerConnection.localDescription
+                        })
+                    });
+                } catch (err) {
+                    console.error("Error handling offer:", err);
+                }
+            }
+            break;
+            
+        case "answer":
+            if (peerConnection) {
+                try {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(event.answer));
+                } catch (err) {
+                    console.error("Error handling answer:", err);
+                }
+            }
+            break;
+            
+        case "ice":
+            if (peerConnection) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(event.candidate));
+                } catch (err) {
+                    console.error("Error adding ICE candidate:", err);
+                }
+            }
+            break;
+            
+        case "call_ended":
+            alert("Call ended by admin");
+            endCall();
+            break;
+    }
+}
+
+async function callAdmin(withVideo) {
+    if (isInCall) {
+        alert("You are already in a call");
+        return;
+    }
+    
+    ringingScreen.style.display = "block";
+    currentCallType = withVideo ? 'video' : 'audio';
+    callTypeDisplay.innerHTML = withVideo ? '📹 Video Call' : '📞 Audio Call';
+    
+    const select = document.getElementById("adminSelect");
+    const selectedOption = select.options[select.selectedIndex];
+    ringingAdminName.textContent = selectedOption.text;
+    
+    try {
+        const formData = new URLSearchParams();
+        formData.append("receiver", selectedAdmin);
+        formData.append("call_type", currentCallType);
+        
+        const response = await fetch("/start_call", {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === "calling") {
+            currentCallId = data.call_id;
+            if (callStatusInterval) clearInterval(callStatusInterval);
+            callStatusInterval = setInterval(checkCallStatus, 2000);
+            
+            // Auto-cancel after 30 seconds
+            setTimeout(() => {
+                if (ringingScreen.style.display === "block") {
+                    cancelCall();
+                    alert("No answer");
+                }
+            }, 30000);
+        }
+    } catch (err) {
+        console.error("Failed to start call:", err);
+        ringingScreen.style.display = "none";
+        alert("Failed to start call");
+    }
+}
+
+function checkCallStatus() {
+    fetch("/call_status")
+    .then(r => r.json())
+    .then(status => {
+        if (status === "accepted") {
+            clearInterval(callStatusInterval);
+            ringingScreen.style.display = "none";
+            ringtone.pause();
+            startCall(currentCallType === 'video');
+        } else if (status === "rejected") {
+            clearInterval(callStatusInterval);
+            ringingScreen.style.display = "none";
+            ringtone.pause();
+            alert("Call was rejected");
+        }
+    })
+    .catch(err => console.error("Failed to check call status:", err));
+}
+
+function cancelCall() {
+    fetch("/end_call", { method: "POST" });
+    ringingScreen.style.display = "none";
+    ringtone.pause();
+    clearInterval(callStatusInterval);
+}
+
+async function startCall(withVideo) {
+    try {
+        isInCall = true;
+        updateCallStatus('connected');
+        
+        // Request media permissions
+        const constraints = {
+            audio: true,
+            video: withVideo ? {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: "user"
+            } : false
+        };
+        
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        // Show local video
+        localVideo.srcObject = localStream;
+        
+        // Create peer connection
+        peerConnection = new RTCPeerConnection(configuration);
+        remoteStream = new MediaStream();
+        remoteVideo.srcObject = remoteStream;
+        
+        // Add local tracks
+        localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+        });
+        
+        // Handle remote tracks
+        peerConnection.ontrack = event => {
+            event.streams[0].getTracks().forEach(track => {
+                remoteStream.addTrack(track);
+                console.log("Added remote track:", track.kind);
+                
+                if (track.kind === 'audio') {
+                    speakerStatus.className = 'audio-status audio-active';
+                    speakerText.innerHTML = 'Receiving audio ✓';
+                    audioWave.style.display = 'flex';
+                }
+            });
+        };
+        
+        // Handle ICE candidates
+        peerConnection.onicecandidate = event => {
+            if (event.candidate) {
+                fetch("/webrtc/ice", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        target: selectedAdmin,
+                        candidate: event.candidate
+                    })
+                });
+            }
+        };
+        
+        // Connection state changes
+        peerConnection.onconnectionstatechange = () => {
+            console.log("Connection state:", peerConnection.connectionState);
+            if (peerConnection.connectionState === 'connected') {
+                startTimer();
+            } else if (peerConnection.connectionState === 'disconnected' ||
+                       peerConnection.connectionState === 'failed' ||
+                       peerConnection.connectionState === 'closed') {
+                if (isInCall) {
+                    alert("Call disconnected");
+                    endCall();
+                }
+            }
+        };
+        
+        // Show video container
+        videoContainer.style.display = 'flex';
+        
+        // Create and send offer
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        
+        await fetch("/webrtc/offer", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                target: selectedAdmin,
+                offer: peerConnection.localDescription,
+                call_type: withVideo ? 'video' : 'audio'
+            })
+        });
+        
+        // Show audio panel
+        audioPanel.style.display = 'block';
+        
+        // Update local audio status
+        micStatus.className = 'audio-status audio-active';
+        micText.innerHTML = withVideo ? 'Connected (Video) ✓' : 'Connected (Audio) ✓';
+        
+        // Show end button
+        endCallBtn.style.display = "inline-block";
+        
+        // Start audio visualization
+        startAudioVisualization(localStream);
+        
+    } catch (err) {
+        console.error("Error starting call:", err);
+        if (err.name === 'NotAllowedError') {
+            alert('Please allow camera and microphone access');
+        } else if (err.name === 'NotFoundError') {
+            alert('No camera or microphone found');
+        } else {
+            alert('Could not access media: ' + err.message);
+        }
+        endCall();
+    }
+}
+
+async function endCall() {
+    // Notify server
+    try {
+        await fetch("/webrtc/call/end", { method: "POST" });
+        await fetch("/end_call", { method: "POST" });
+    } catch (err) {
+        console.error("Failed to notify server:", err);
+    }
+    
+    // Close peer connection
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+    }
+    
+    // Stop media tracks
+    if (localStream) {
+        localStream.getTracks().forEach(track => {
+            track.stop();
+            console.log("Stopped track:", track.kind);
+        });
+        localStream = null;
+    }
+    
+    // Hide video elements
+    localVideo.srcObject = null;
+    remoteVideo.srcObject = null;
+    videoContainer.style.display = 'none';
+    
+    // Hide audio panel
+    audioPanel.style.display = 'none';
+    
+    // Stop audio visualization
+    if (animationFrame) cancelAnimationFrame(animationFrame);
+    if (source) source.disconnect();
+    if (audioContext) audioContext.close();
+    audioContext = null;
+    
+    // Stop timer
+    stopTimer();
+    
+    // Hide end button
+    endCallBtn.style.display = "none";
+    
+    // Reset status indicators
+    micStatus.className = 'audio-status audio-inactive';
+    micText.innerHTML = 'Not connected';
+    speakerStatus.className = 'audio-status audio-inactive';
+    speakerText.innerHTML = 'Waiting for admin...';
+    audioWave.style.display = 'none';
+    
+    // Hide ringing screen if visible
+    ringingScreen.style.display = "none";
+    ringtone.pause();
+    
+    // Update state
+    isInCall = false;
+    updateCallStatus('disconnected');
+}
+
+function startAudioVisualization(stream) {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    
+    source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    
+    function updateVisualization() {
+        if (!analyser) return;
+        
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        const level = Math.round((average / 255) * 100);
+        
+        audioLevel.innerHTML = `Audio level: ${level}%`;
+        
+        if (level > 5) {
+            micStatus.className = 'audio-status audio-active';
+            micText.innerHTML = 'Speaking ✓';
+        }
+        
+        animationFrame = requestAnimationFrame(updateVisualization);
+    }
+    
+    updateVisualization();
+}
+
+function checkRemoteCallEnd() {
+    fetch("/webrtc/call/status")
+    .then(r => r.json())
+    .then(status => {
+        if (!status.in_call && isInCall) {
+            console.log("Remote user ended the call");
+            alert("Call ended by admin");
+            endCall();
+        }
+    })
+    .catch(err => console.error("Failed to check call status:", err));
+}
+
+// Payment functions
+function recharge(amount) {
+    fetch("/create_order", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "amount=" + amount
+    })
+    .then(r => r.json())
+    .then(order => {
+        var options = {
+            key: "{{ razorpay_key }}",
+            amount: order.amount,
+            currency: "INR",
+            order_id: order.id,
+            handler: function(response){
+                fetch("/payment_success", {
+                    method:"POST",
+                    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+                    body: "razorpay_payment_id="+response.razorpay_payment_id+
+                          "&razorpay_order_id="+response.razorpay_order_id+
+                          "&razorpay_signature="+response.razorpay_signature+
+                          "&amount="+amount
+                })
+                .then(()=>{
+                    alert("✅ Recharge successful");
+                    loadWallet();
+                });
+            }
+        };
+        var rzp = new Razorpay(options);
+        rzp.open();
+    })
+    .catch(err => {
+        console.error("Recharge failed:", err);
+        alert("Recharge failed");
+    });
+}
+
+function customRecharge() {
+    let amt = document.getElementById("customAmount").value;
+    if (amt === "" || amt <= 0) {
+        alert("Enter valid amount");
+        return;
+    }
+    recharge(amt);
+}
+
+function book() {
+    let time = document.getElementById("time").value;
+    if (time === "") {
+        alert("Please select appointment time");
+        return;
+    }
+    fetch("/book_appointment", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "time=" + encodeURIComponent(time)
+    })
+    .then(r => r.text())
+    .then(d => {
+        alert(d);
+        loadWallet();
+    })
+    .catch(err => {
+        console.error("Booking failed:", err);
+        alert("Booking failed");
+    });
+}
+
+function loadWallet() {
+    fetch("/wallet")
+    .then(r => r.json())
+    .then(data => {
+        balanceSpan.innerText = data.balance.toFixed(2);
+    })
+    .catch(err => console.error("Failed to load wallet:", err));
+}
+
+// Test functions
+function playTestSound() {
+    const testAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = testAudioContext.createOscillator();
+    const gainNode = testAudioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(testAudioContext.destination);
+    
+    oscillator.frequency.value = 440;
+    gainNode.gain.value = 0.5;
+    
+    oscillator.start();
+    oscillator.stop(testAudioContext.currentTime + 0.5);
+}
+
+function testMic() {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            playTestSound();
+            micStatus.className = 'audio-status audio-active';
+            micText.innerHTML = 'Working ✓';
+            
+            setTimeout(() => {
+                stream.getTracks().forEach(track => track.stop());
+            }, 1000);
+        })
+        .catch(err => {
+            alert('Microphone error: ' + err.message);
+        });
+}
+
+function testCamera() {
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            // Create temporary video element
+            const testVideo = document.createElement('video');
+            testVideo.srcObject = stream;
+            testVideo.autoplay = true;
+            testVideo.playsInline = true;
+            testVideo.style.position = 'fixed';
+            testVideo.style.top = '50%';
+            testVideo.style.left = '50%';
+            testVideo.style.transform = 'translate(-50%, -50%)';
+            testVideo.style.width = 'min(400px, 90%)';
+            testVideo.style.zIndex = '2000';
+            testVideo.style.border = '3px solid #667eea';
+            testVideo.style.borderRadius = '12px';
+            document.body.appendChild(testVideo);
+            
+            // Add close button
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = 'Close';
+            closeBtn.style.position = 'fixed';
+            closeBtn.style.top = 'calc(50% + 170px)';
+            closeBtn.style.left = '50%';
+            closeBtn.style.transform = 'translateX(-50%)';
+            closeBtn.style.zIndex = '2001';
+            closeBtn.style.padding = '12px 30px';
+            closeBtn.style.background = '#dc3545';
+            closeBtn.style.color = 'white';
+            closeBtn.style.border = 'none';
+            closeBtn.style.borderRadius = '30px';
+            closeBtn.style.cursor = 'pointer';
+            closeBtn.onclick = function() {
+                stream.getTracks().forEach(track => track.stop());
+                testVideo.remove();
+                this.remove();
+            };
+            document.body.appendChild(closeBtn);
+            
+            alert('✅ Camera is working!');
+        })
+        .catch(err => {
+            alert('❌ Camera error: ' + err.message);
+        });
+}
+
+async function checkMediaPermissions() {
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        console.log("Available devices:", devices.map(d => d.kind));
+    } catch (err) {
+        console.error("Failed to enumerate devices:", err);
+    }
+}
+
+// Cleanup on page unload
+window.onbeforeunload = function() {
+    if (signalingInterval) clearInterval(signalingInterval);
+    if (callStatusInterval) clearInterval(callStatusInterval);
+    if (isInCall) endCall();
+};
+
+// Enter key to send message
+msgInput.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        sendMsg();
+    }
+});
+</script>
+</body>
+</html>
