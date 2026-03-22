@@ -19,30 +19,43 @@ app.config['MYSQL_HOST'] = config.MYSQL_HOST
 app.config['MYSQL_USER'] = config.MYSQL_USER
 app.config['MYSQL_PASSWORD'] = config.MYSQL_PASSWORD
 app.config['MYSQL_DB'] = config.MYSQL_DB
-app.config['MYSQL_PORT'] = config.MYSQL_PORT
 
 mysql = MySQL(app)
+
+# WebRTC signaling storage
+user_web_rtc_status = {}
+user_web_rtc_events = defaultdict(list)
 
 # Razorpay client
 client = razorpay.Client(
     auth=(config.RAZORPAY_KEY, config.RAZORPAY_SECRET)
 )
 
-# WebRTC signaling storage
-call_signaling = defaultdict(list)
-call_status_webrtc = {}  # track who's in a call
-online_users = set()
-user_sessions = {}
+CALL_RATE_PER_MINUTE = 1/1000
 
-# Clean stale users
-def clean_stale_users():
-    now = time.time()
-    stale = [u for u, last in list(user_sessions.items()) if now - last > 60]
-    for u in stale:
-        if u in online_users:
-            online_users.remove(u)
-        if u in user_sessions:
-            del user_sessions[u]
+def deduct_call_charge(user_id, seconds):
+    charge = seconds * (CALL_RATE_PER_MINUTE / 60)  # Fixed calculation
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT wallet FROM users WHERE id=%s", (user_id,))
+    result = cur.fetchone()
+    
+    if not result:
+        return False
+        
+    wallet = result[0]
+
+    if wallet <= 0:
+        return False
+
+    cur.execute("""
+        UPDATE users
+        SET wallet = GREATEST(wallet - %s, 0)
+        WHERE id=%s
+    """, (charge, user_id))
+
+    mysql.connection.commit()
+    cur.close()
+    return True
 
 # LOGIN
 @app.route("/", methods=["GET", "POST"])
@@ -57,26 +70,122 @@ def login():
             (email, password)
         )
         user = cur.fetchone()
+        cur.close()
 
         if user:
             session["id"] = user[0]
             session["role"] = user[4]
             session["name"] = user[1]
-            session.permanent = True
-            
-            # Add to online users
-            user_id = str(user[0])
-            online_users.add(user_id)
-            user_sessions[user_id] = time.time()
 
             if user[4] == "admin":
                 return redirect("/admin")
             else:
-                return redirect("/user")
+                return redirect("/admins")
         else:
             return "Invalid credentials"
 
     return render_template("login.html")
+
+# WebRTC Signaling Endpoints
+@app.route('/api/webrtc/ping', methods=['POST'])
+def webrtc_ping():
+    """Keep WebRTC session alive"""
+    if 'id' in session:
+        user_web_rtc_status[session['id']] = time.time()
+    return jsonify({'status': 'ok'})
+
+@app.route('/api/webrtc/offer', methods=['POST'])
+def webrtc_offer():
+    """Send SDP offer to target user"""
+    user_id = session.get('id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    data = request.get_json()
+    target = data.get('to')
+    offer = data.get('offer')
+    
+    if not target:
+        return jsonify({'error': 'Target user required'}), 400
+    
+    # Store event for target user
+    user_web_rtc_events[int(target)].append({
+        'type': 'offer',
+        'from': user_id,
+        'offer': offer
+    })
+    return jsonify({'status': 'ok'})
+
+@app.route('/api/webrtc/answer', methods=['POST'])
+def webrtc_answer():
+    """Send SDP answer to target user"""
+    user_id = session.get('id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    data = request.get_json()
+    target = data.get('to')
+    answer = data.get('answer')
+    
+    if not target:
+        return jsonify({'error': 'Target user required'}), 400
+    
+    user_web_rtc_events[int(target)].append({
+        'type': 'answer',
+        'from': user_id,
+        'answer': answer
+    })
+    return jsonify({'status': 'ok'})
+
+@app.route('/api/webrtc/ice', methods=['POST'])
+def webrtc_ice():
+    """Send ICE candidate to target user"""
+    user_id = session.get('id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    data = request.get_json()
+    target = data.get('to')
+    candidate = data.get('candidate')
+    
+    if not target:
+        return jsonify({'error': 'Target user required'}), 400
+    
+    user_web_rtc_events[int(target)].append({
+        'type': 'ice',
+        'from': user_id,
+        'candidate': candidate
+    })
+    return jsonify({'status': 'ok'})
+
+@app.route('/api/webrtc/events')
+def webrtc_events():
+    """Get WebRTC events for current user"""
+    user_id = session.get('id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    events = user_web_rtc_events[user_id][:]
+    user_web_rtc_events[user_id].clear()
+    return jsonify(events)
+
+@app.route('/api/webrtc/hangup', methods=['POST'])
+def webrtc_hangup():
+    """Handle call hangup"""
+    user_id = session.get('id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    data = request.get_json()
+    target = data.get('to')
+    
+    if target:
+        user_web_rtc_events[int(target)].append({
+            'type': 'hangup',
+            'from': user_id
+        })
+    
+    return jsonify({'status': 'ok'})
 
 @app.route("/admin")
 def admin():
@@ -88,8 +197,25 @@ def admin():
     mysql.connection.commit()
     cur.execute("SELECT id, name FROM users WHERE role='user'")
     users = cur.fetchall()
+    cur.close()
 
-    return render_template("admin.html", users=users, username=session["name"])
+    return render_template("admin.html", users=users)
+
+@app.route("/admins")
+def admins():
+    if "id" not in session or session["role"] != "user":
+        return redirect("/")
+
+    cur = mysql.connection.cursor()
+    cur.execute("""
+    SELECT id, name, photo, rating, price_per_min, online_status
+    FROM users
+    WHERE role='admin'
+    """)
+    admins = cur.fetchall()
+    cur.close()
+
+    return render_template("admins.html", admins=admins)
 
 @app.route("/user")
 def user():
@@ -102,67 +228,26 @@ def user():
     cur = mysql.connection.cursor()
     cur.execute("SELECT id, name FROM users WHERE role='admin'")
     admins = cur.fetchall()
+    cur.close()
 
     return render_template(
         "user.html",
         admin_id=admin_id,
         call=call,
         admins=admins,
-        razorpay_key=config.RAZORPAY_KEY,
-        username=session["name"]
+        razorpay_key=config.RAZORPAY_KEY
     )
 
 @app.route("/logout")
 def logout():
     if "id" in session:
-        user_id = str(session["id"])
-        if user_id in online_users:
-            online_users.remove(user_id)
-        if user_id in user_sessions:
-            del user_sessions[user_id]
-        
         cur = mysql.connection.cursor()
         cur.execute("UPDATE users SET online_status=0 WHERE id=%s", (session["id"],))
         mysql.connection.commit()
+        cur.close()
 
     session.clear()
     return redirect("/")
-
-@app.route("/api/ping", methods=["POST"])
-def ping():
-    """Keep session alive"""
-    if "id" in session:
-        user_sessions[str(session["id"])] = time.time()
-    return jsonify({"status": "ok"})
-
-@app.route("/api/online-users")
-def get_online_users():
-    clean_stale_users()
-    if "id" not in session:
-        return jsonify({"error": "Not logged in"}), 401
-    
-    user_id = str(session["id"])
-    users_list = []
-    
-    cur = mysql.connection.cursor()
-    if session["role"] == "admin":
-        cur.execute("SELECT id, name FROM users WHERE role='user'")
-    else:
-        cur.execute("SELECT id, name FROM users WHERE role='admin'")
-    
-    all_users = cur.fetchall()
-    
-    for u in all_users:
-        uid = str(u[0])
-        if uid != user_id:
-            users_list.append({
-                "id": uid,
-                "name": u[1],
-                "online": uid in online_users,
-                "in_call_with": call_status_webrtc.get(uid)
-            })
-    
-    return jsonify(users_list)
 
 @app.route("/send", methods=["POST"])
 def send():
@@ -177,6 +262,7 @@ def send():
     """, (sender, receiver, message))
 
     mysql.connection.commit()
+    cur.close()
     return "ok"
 
 @app.route("/messages/<rid>")
@@ -194,6 +280,7 @@ def messages(rid):
     """, (uid, rid, rid, uid))
 
     data = cur.fetchall()
+    cur.close()
     return jsonify(data)
 
 # CALL SYSTEM
@@ -218,7 +305,10 @@ def start_call():
     """, (caller, receiver, call_type))
 
     mysql.connection.commit()
-    return jsonify({"status": "calling", "call_id": cur.lastrowid})
+    call_id = cur.lastrowid
+    cur.close()
+    
+    return jsonify({"status": "calling", "call_id": call_id})
 
 @app.route("/check_call")
 def check_call():
@@ -234,6 +324,8 @@ def check_call():
     """, (uid,))
 
     call = cur.fetchone()
+    cur.close()
+    
     if call:
         return jsonify({
             'id': call[0],
@@ -253,6 +345,7 @@ def accept_call(cid):
     """, (cid,))
 
     mysql.connection.commit()
+    cur.close()
     return jsonify({"status": "accepted"})
 
 @app.route("/reject_call/<cid>")
@@ -260,6 +353,7 @@ def reject_call(cid):
     cur = mysql.connection.cursor()
     cur.execute("UPDATE calls SET status='rejected' WHERE id=%s", (cid,))
     mysql.connection.commit()
+    cur.close()
     return jsonify({"status": "rejected"})
 
 @app.route("/call_status")
@@ -275,6 +369,7 @@ def call_status():
     """, (uid, uid))
 
     data = cur.fetchone()
+    cur.close()
 
     if data:
         return jsonify(data[0])
@@ -300,159 +395,70 @@ def end_call():
     if call:
         call_id, caller_id, start_time, status = call
 
+        # If call already started, charge user
+        if status == "accepted" and start_time:
+            now = datetime.now()
+            seconds = (now - start_time).total_seconds()
+            deduct_call_charge(caller_id, seconds)
+
         cur.execute("UPDATE calls SET status='ended' WHERE id=%s", (call_id,))
         mysql.connection.commit()
 
+    cur.close()
     return jsonify({"status": "ended"})
 
-# WebRTC Signaling Endpoints
-@app.route("/webrtc/offer", methods=["POST"])
-def webrtc_offer():
-    """Handle WebRTC offer"""
+# ZEGOCLOUD TOKEN GENERATION (optional)
+@app.route("/generate_zego_token", methods=["POST"])
+def generate_zego_token():
     if "id" not in session:
         return jsonify({"error": "not_logged_in"}), 401
     
-    data = request.get_json()
-    target = str(data.get("target"))
-    offer = data.get("offer")
-    call_type = data.get("call_type", "audio")
-    
-    # Store offer for target
-    call_signaling[target].append({
-        "type": "offer",
-        "from": str(session["id"]),
-        "offer": offer,
-        "call_type": call_type
-    })
-    
-    return jsonify({"status": "ok"})
-
-@app.route("/webrtc/answer", methods=["POST"])
-def webrtc_answer():
-    """Handle WebRTC answer"""
-    if "id" not in session:
-        return jsonify({"error": "not_logged_in"}), 401
-    
-    data = request.get_json()
-    target = str(data.get("target"))
-    answer = data.get("answer")
-    
-    call_signaling[target].append({
-        "type": "answer",
-        "from": str(session["id"]),
-        "answer": answer
-    })
-    
-    return jsonify({"status": "ok"})
-
-@app.route("/webrtc/ice", methods=["POST"])
-def webrtc_ice():
-    """Handle ICE candidate"""
-    if "id" not in session:
-        return jsonify({"error": "not_logged_in"}), 401
-    
-    data = request.get_json()
-    target = str(data.get("target"))
-    candidate = data.get("candidate")
-    
-    call_signaling[target].append({
-        "type": "ice",
-        "from": str(session["id"]),
-        "candidate": candidate
-    })
-    
-    return jsonify({"status": "ok"})
-
-@app.route("/webrtc/events")
-def webrtc_events():
-    """Get signaling events for current user"""
-    if "id" not in session:
-        return jsonify({"error": "not_logged_in"}), 401
-    
-    user_id = str(session["id"])
-    events = call_signaling.get(user_id, [])
-    
-    # Clear after retrieving
-    if user_id in call_signaling:
-        call_signaling[user_id] = []
-    
-    return jsonify(events)
-
-@app.route("/webrtc/call/accept", methods=["POST"])
-def webrtc_accept_call():
-    """Accept a call"""
-    if "id" not in session:
-        return jsonify({"error": "not_logged_in"}), 401
-    
-    data = request.get_json()
-    caller_id = str(data.get("caller_id"))
-    user_id = str(session["id"])
-    
-    # Mark both users as in call
-    call_status_webrtc[user_id] = caller_id
-    call_status_webrtc[caller_id] = user_id
-    
-    # Update call in database
-    cur = mysql.connection.cursor()
-    cur.execute("""
-        UPDATE calls SET status='accepted', start_time=NOW()
-        WHERE (caller_id=%s AND receiver_id=%s) OR (caller_id=%s AND receiver_id=%s)
-    """, (caller_id, session["id"], session["id"], caller_id))
-    mysql.connection.commit()
-    
-    return jsonify({"status": "accepted"})
-
-@app.route("/webrtc/call/end", methods=["POST"])
-def webrtc_end_call():
-    """End a call"""
-    if "id" not in session:
-        return jsonify({"error": "not_logged_in"}), 401
-    
-    user_id = str(session["id"])
-    other_id = call_status_webrtc.get(user_id)
-    
-    if other_id:
-        # Notify other user
-        call_signaling[other_id].append({
-            "type": "call_ended",
-            "from": user_id
-        })
+    try:
+        user_id = request.form.get("user_id")
+        room_id = request.form.get("room_id")
         
-        # Remove from call status
-        if other_id in call_status_webrtc:
-            del call_status_webrtc[other_id]
-    
-    if user_id in call_status_webrtc:
-        del call_status_webrtc[user_id]
-    
-    # Update database
-    cur = mysql.connection.cursor()
-    cur.execute("""
-        UPDATE calls SET status='ended' 
-        WHERE (caller_id=%s OR receiver_id=%s) AND status='accepted'
-    """, (session["id"], session["id"]))
-    mysql.connection.commit()
-    
-    return jsonify({"status": "ok"})
-
-@app.route("/webrtc/call/status")
-def webrtc_call_status():
-    """Get current call status"""
-    if "id" not in session:
-        return jsonify({"error": "not_logged_in"}), 401
-    
-    user_id = str(session["id"])
-    in_call_with = call_status_webrtc.get(user_id)
-    
-    if in_call_with:
-        return jsonify({
-            "in_call": True,
-            "with": in_call_with
-        })
-    else:
-        return jsonify({
-            "in_call": False
-        })
+        if not user_id or not room_id:
+            return jsonify({"error": "Missing parameters"}), 400
+        
+        app_id = config.ZEGO_APP_ID
+        server_secret = config.ZEGO_SERVER_SECRET
+        
+        effective_time = 3600
+        current_time = int(time.time())
+        
+        payload = {
+            "app_id": app_id,
+            "room_id": str(room_id),
+            "user_id": str(user_id),
+            "nonce": current_time,
+            "ctime": current_time,
+            "expire": effective_time
+        }
+        
+        payload_json = json.dumps(payload, separators=(',', ':'))
+        
+        signature = hmac.new(
+            server_secret.encode('utf-8'),
+            payload_json.encode('utf-8'),
+            hashlib.sha256
+        ).digest()
+        
+        signature_base64 = base64.b64encode(signature).decode('utf-8')
+        
+        token_data = {
+            "payload": payload_json,
+            "signature": signature_base64
+        }
+        
+        token = base64.b64encode(
+            json.dumps(token_data).encode('utf-8')
+        ).decode('utf-8')
+        
+        return jsonify({"token": token})
+        
+    except Exception as e:
+        print(f"Token generation error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 # RAZORPAY PAYMENT
 @app.route("/create_order", methods=["POST"])
@@ -496,10 +502,12 @@ def payment_success():
         """, (amount, uid))
 
         mysql.connection.commit()
+        cur.close()
 
         return "success"
 
-    except:
+    except Exception as e:
+        print(f"Payment verification failed: {e}")
         return "payment verification failed"
 
 # APPOINTMENT SYSTEM
@@ -514,7 +522,12 @@ def book_appointment():
 
     cur = mysql.connection.cursor()
     cur.execute("SELECT wallet FROM users WHERE id=%s", (uid,))
-    wallet = cur.fetchone()[0]
+    result = cur.fetchone()
+    
+    if not result:
+        return "User not found"
+        
+    wallet = result[0]
 
     if wallet < 100:
         return "Recharge first"
@@ -530,6 +543,7 @@ def book_appointment():
     """, (uid,))
 
     mysql.connection.commit()
+    cur.close()
     return "Appointment booked successfully"
 
 @app.route("/wallet")
@@ -538,102 +552,12 @@ def wallet():
     cur = mysql.connection.cursor()
 
     cur.execute("SELECT wallet FROM users WHERE id=%s", (uid,))
-    balance = cur.fetchone()[0]
+    result = cur.fetchone()
+    cur.close()
+    
+    balance = result[0] if result else 0
 
     return jsonify({"balance": float(balance)})
 
-
-
-
-def create_tables():
-    cur = mysql.connection.cursor()
-
-    # USERS TABLE
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(100),
-        email VARCHAR(100),
-        password VARCHAR(100),
-        role VARCHAR(20),
-        wallet DECIMAL(10,2) DEFAULT 0,
-        photo VARCHAR(255),
-        rating FLOAT DEFAULT 4.5,
-        price_per_min INT DEFAULT 10,
-        online_status TINYINT DEFAULT 1
-    )
-    """)
-
-    # OTHER TABLES
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS messages (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        sender_id INT,
-        receiver_id INT,
-        message TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS calls (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        caller_id INT,
-        receiver_id INT,
-        status VARCHAR(20),
-        start_time DATETIME,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        call_type VARCHAR(10)
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS payments (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT,
-        amount INT,
-        razorpay_payment_id VARCHAR(200),
-        status VARCHAR(50),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS appointments (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT,
-        admin_id INT,
-        appointment_time DATETIME,
-        status VARCHAR(50)
-    )
-    """)
-
-    # DEFAULT USERS (NO DUPLICATE)
-    cur.execute("""
-    INSERT IGNORE INTO users(name,email,password,role,wallet)
-    VALUES('Admin','admin@gmail.com','admin123','admin',0)
-    """)
-
-    cur.execute("""
-    INSERT IGNORE INTO users(name,email,password,role,wallet)
-    VALUES('User1','user@gmail.com','1234','user',10)
-    """)
-
-    cur.execute("""
-    INSERT IGNORE INTO users(name,email,password,role)
-    VALUES
-    ('Krushna','krushna@gmail.com','krushna123','admin'),
-    ('Rahul','rahul@gmail.com','rahul123','admin'),
-    ('Amit','amit@gmail.com','amit123','admin')
-    """)
-
-    mysql.connection.commit()
-    cur.close()
-
-import os
-
 if __name__ == "__main__":
-    with app.app_context():
-        create_tables()
-
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=5000, debug=True)
