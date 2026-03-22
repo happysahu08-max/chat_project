@@ -1,378 +1,237 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Admin - Video Calling System</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; 
-            padding: 12px;
-            max-width: 800px;
-            margin: 0 auto;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            width: 100%;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        
-        @media (max-width: 600px) {
-            body {
-                padding: 8px;
-                align-items: flex-start;
-            }
-            .container {
-                padding: 15px;
-            }
-            .header {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
-            .header a {
-                display: inline-block;
-                margin-top: 10px;
-            }
-            button {
-                width: 100%;
-                margin: 5px 0 !important;
-            }
-            select, input {
-                width: 100% !important;
-            }
-            #videoContainer {
-                bottom: 10px;
-                right: 10px;
-                left: 10px;
-            }
-            #videoContainer video {
-                width: 45%;
-                height: auto;
-            }
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
-        }
-        
-        .header h2 {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 24px;
-        }
-        
-        #connectionStatus {
-            display: flex;
-            align-items: center;
-            margin: 10px 0;
-            padding: 8px 16px;
-            background: #f8f9fa;
-            border-radius: 30px;
-            display: inline-block;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-        
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
-            animation: pulse 2s infinite;
-        }
-        
-        .status-connected { 
-            background-color: #28a745;
-            box-shadow: 0 0 10px #28a745;
-        }
-        
-        .status-disconnected { 
-            background-color: #dc3545;
-            box-shadow: 0 0 10px #dc3545;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.1); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        
-        #chat { 
-            height: 350px; 
-            overflow: auto; 
-            border: 1px solid #e0e0e0; 
-            padding: 15px; 
-            margin-bottom: 10px; 
-            border-radius: 12px;
-            background: #fafafa;
-        }
-        
-        button { 
-            padding: 12px 24px; 
-            margin: 5px; 
-            cursor: pointer; 
-            border-radius: 12px; 
-            border: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-        
-        button:active {
-            transform: translateY(0);
-        }
-        
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        input, select { 
-            padding: 12px; 
-            width: 300px; 
-            border: 2px solid #e0e0e0; 
-            border-radius: 12px; 
-            font-size: 14px;
-            transition: all 0.3s ease;
-            margin-bottom: 15px;
-        }
-        
-        input:focus, select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .btn-success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        }
-        
-        .btn-danger {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        }
-        
-        .btn-info {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-        }
-        
-        #callTimer { 
-            font-size: 18px; 
-            font-weight: bold; 
-            color: #28a745; 
-            display: none;
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            padding: 15px;
-            border-radius: 12px;
-            margin: 10px 0;
-            text-align: center;
-            border: 2px solid #28a745;
-        }
-        
-        #videoContainer {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            background: rgba(0,0,0,0.3);
-            padding: 15px;
-            border-radius: 15px;
-            max-width: 500px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        #videoContainer video {
-            width: 200px;
-            height: 150px;
-            border-radius: 12px;
-            object-fit: cover;
-            border: 3px solid #667eea;
-            background: #333;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-
-        .audio-indicator {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 10px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            border: 1px solid #e0e0e0;
-            flex-wrap: wrap;
-        }
-
-        .audio-wave {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            height: 30px;
-        }
-
-        .wave-bar {
-            width: 4px;
-            height: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            animation: wave 0.5s infinite ease-in-out;
-            border-radius: 2px;
-        }
-
-        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
-        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
-        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
-        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
-
-        @keyframes wave {
-            0%, 100% { height: 20px; }
-            50% { height: 40px; }
-        }
-
-        .audio-status {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 5px;
-        }
-
-        .audio-active { 
-            background-color: #28a745; 
-            animation: pulse 1s infinite;
-        }
-        
-        .audio-inactive { 
-            background-color: #dc3545; 
-        }
-
-        .mic-test-btn {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-left: 10px;
-            transition: all 0.3s ease;
-        }
-
-        .mic-test-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
-        }
-
-        #incomingScreen {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            z-index: 9999;
-            text-align: center;
-            padding-top: 120px;
-        }
-
-        #incomingScreen h2 {
-            font-size: 36px;
-            margin-bottom: 20px;
-        }
-
-        #incomingScreen div[style*="font-size:120px"] {
-            font-size: 120px !important;
-            margin: 30px;
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-
-        #incomingScreen button {
-            background: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 20px;
-            border-radius: 50px;
-            margin: 0 10px;
-            cursor: pointer;
-            font-weight: bold;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            min-width: 200px;
-        }
-
-        #incomingScreen button:first-of-type {
-            color: #28a745;
-        }
-
-        #incomingScreen button:last-of-type {
-            color: #dc3545;
-        }
-
-        #ringtone {
-            display: none;
-        }
-
-        .message-input {
-            display: flex;
-            gap: 10px;
-            margin: 15px 0;
-        }
-
-        .message-input input {
-            flex: 1;
-            margin-bottom: 0;
-        }
-
-        .user-list {
-            margin-bottom: 15px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<title>Admin Chat - Video Calling System</title>
+<style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+    
+    body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; 
+        padding: 12px;
+        max-width: 800px;
+        margin: 0 auto;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        width: 100%;
+    }
+    
+    @media (max-width: 600px) {
+        body { padding: 8px; }
+        .container { padding: 15px; }
+        button { padding: 12px 20px; }
+        input, select { font-size: 16px; }
+    }
+    
+    #chat { 
+        height: 350px; 
+        overflow: auto; 
+        border: 1px solid #e0e0e0; 
+        padding: 15px; 
+        margin-bottom: 10px; 
+        border-radius: 12px;
+        background: #fafafa;
+    }
+    
+    button { 
+        padding: 12px 24px; 
+        margin: 5px; 
+        cursor: pointer; 
+        border-radius: 12px; 
+        border: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    button:hover { transform: translateY(-2px); }
+    
+    input, select { 
+        padding: 12px; 
+        border: 2px solid #e0e0e0; 
+        border-radius: 12px; 
+        font-size: 14px;
+    }
+    
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-connected { 
+        background-color: #28a745;
+        box-shadow: 0 0 10px #28a745;
+    }
+    
+    .status-disconnected { 
+        background-color: #dc3545;
+        box-shadow: 0 0 10px #dc3545;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.1); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 15px 0;
+    }
+    
+    .btn-success { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+    .btn-danger { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    
+    /* Incoming Call Modal */
+    .incoming-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        z-index: 10000;
+        text-align: center;
+        padding-top: 120px;
+        color: white;
+    }
+    
+    .incoming-modal.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .incoming-modal h2 {
+        font-size: 36px;
+        margin-bottom: 20px;
+    }
+    
+    .incoming-avatar {
+        font-size: 120px;
+        margin: 30px;
+        animation: bounce 2s infinite;
+    }
+    
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-20px); }
+    }
+    
+    .incoming-name {
+        font-size: 28px;
+        margin-bottom: 50px;
+        font-weight: 300;
+    }
+    
+    .incoming-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .incoming-buttons button {
+        padding: 15px 40px;
+        font-size: 20px;
+        border-radius: 50px;
+        min-width: 200px;
+    }
+    
+    .accept-btn {
+        background: white;
+        color: #28a745;
+    }
+    
+    .reject-btn {
+        background: white;
+        color: #dc3545;
+    }
+    
+    /* Video Container */
+    #videoContainer {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        background: rgba(0,0,0,0.2);
+        padding: 15px;
+        border-radius: 15px;
+        max-width: 500px;
+    }
+    
+    #videoContainer video {
+        width: 200px;
+        height: 150px;
+        border-radius: 12px;
+        object-fit: cover;
+        border: 3px solid #667eea;
+        background: #333;
+    }
+    
+    #callTimer {
+        font-size: 18px;
+        font-weight: bold;
+        color: #28a745;
+        display: none;
+        background: #e8f5e9;
+        padding: 15px;
+        border-radius: 12px;
+        margin: 10px 0;
+        text-align: center;
+    }
+    
+    #endCallBtn {
+        display: none;
+    }
+</style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
         <div>
-            <h2>👑 Admin: {{ username }}</h2>
+            <h2 style="margin:0;">👑 Admin Dashboard</h2>
             <div id="connectionStatus">
                 <span class="status-indicator status-disconnected" id="callStatusIndicator"></span>
                 <span id="callStatusText">Not in call</span>
@@ -383,611 +242,261 @@
         </div>
     </div>
 
-    <div class="user-list">
-        <label for="user">Select User:</label>
-        <select id="user">
-            {% for u in users %}
-            <option value="{{ u[0] }}">{{ u[1] }}</option>
-            {% endfor %}
-        </select>
-    </div>
+    <select id="user">
+        {% for u in users %}
+        <option value="{{u[0]}}">{{u[1]}}</option>
+        {% endfor %}
+    </select>
 
     <div id="chat"></div>
 
-    <div class="message-input">
-        <input id="msg" placeholder="Type message...">
+    <div style="display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
+        <input id="msg" placeholder="Type message..." style="flex: 1; min-width: 200px;">
         <button onclick="sendMsg()" class="btn-success">📤 Send</button>
     </div>
 
-    <div style="display: flex; gap: 10px; margin: 10px 0;">
-        <button onclick="startAudioCall()" id="audioCallBtn" class="btn-info" style="flex: 1;">📞 Audio Call</button>
-        <button onclick="startVideoCall()" id="videoCallBtn" class="btn-primary" style="flex: 1;">📹 Video Call</button>
-    </div>
-
-    <div style="display: flex; gap: 10px; margin: 10px 0;">
-        <button id="endCallBtn" onclick="endCall()" class="btn-danger" style="display: none; flex: 1;">🔴 End Call</button>
+    <div class="action-buttons">
+        <button id="audioCallBtn" onclick="makeAudioCall()" class="btn-primary">🎤 Audio Call</button>
+        <button id="videoCallBtn" onclick="makeVideoCall()" class="btn-primary">📹 Video Call</button>
+        <button id="endCallBtn" onclick="endCall()" class="btn-danger">🔴 End Call</button>
     </div>
     
     <div id="callTimer">
         ⏱ Call Time: <span id="timer">00:00</span>
     </div>
-    
-    <!-- Audio Status Indicators -->
-    <div id="audioIndicators" style="display: none; margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 15px;">
-        <h4 style="margin:0 0 15px 0; color: #333;">🎤 Audio Status</h4>
-        
-        <div class="audio-indicator">
-            <span style="min-width: 100px;">Your Microphone:</span>
-            <span class="audio-status audio-inactive" id="localAudioStatus"></span>
-            <span id="localAudioText">Not connected</span>
-            <button onclick="testMicrophone()" class="mic-test-btn">🔊 Test Mic</button>
-        </div>
-        
-        <div class="audio-indicator">
-            <span style="min-width: 100px;">User's Audio:</span>
-            <span class="audio-status audio-inactive" id="remoteAudioStatus"></span>
-            <span id="remoteAudioText">Waiting for user...</span>
-            <div class="audio-wave" id="remoteWave" style="display: none;">
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-                <div class="wave-bar"></div>
-            </div>
-        </div>
-        
-        <div id="audioDebug" style="margin-top: 15px; font-size: 12px; color: #666; padding: 10px; background: #fff; border-radius: 8px;">
-            <span id="audioLevel">Audio level: 0%</span>
-        </div>
-    </div>
-
-    <!-- Test Audio Buttons -->
-    <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-        <button onclick="playTestSound()" class="btn-info" style="flex: 1;">🔊 Test Sound</button>
-        <button onclick="testCamera()" class="btn-primary" style="flex: 1;">📷 Test Camera</button>
-    </div>
 </div>
 
-<!-- Video container for calls -->
-<div id="videoContainer" style="display: none;">
-    <video id="localVideo" autoplay muted playsinline></video>
-    <video id="remoteVideo" autoplay playsinline></video>
-</div>
-
-<!-- Incoming Call Screen -->
-<div id="incomingScreen">
+<!-- Incoming Call Modal -->
+<div id="incomingModal" class="incoming-modal">
     <h2>📞 Incoming Call</h2>
-    <div style="font-size:120px;">👤</div>
-    <div id="incomingName" style="font-size:28px;margin-bottom:50px;"></div>
-    <div>
-        <button onclick="acceptCall()">✅ Answer</button>
-        <button onclick="rejectCall()">❌ Reject</button>
+    <div class="incoming-avatar">👤</div>
+    <div class="incoming-name" id="incomingName">User Calling...</div>
+    <div class="incoming-buttons">
+        <button class="accept-btn" onclick="acceptIncomingCall()">✅ Answer</button>
+        <button class="reject-btn" onclick="rejectIncomingCall()">❌ Reject</button>
     </div>
 </div>
-
-<audio id="ringtone" loop>
-    <source src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" type="audio/ogg">
-</audio>
 
 <script>
 // ============================================
-// ADMIN APPLICATION - WEBRTC VIDEO CALLING
+// ADMIN APPLICATION WITH WORKING WEBRTC
 // ============================================
 
-// Configuration
-const configuration = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' }
-    ]
-};
-
-// State variables
 let localStream = null;
 let remoteStream = null;
 let peerConnection = null;
 let currentCall = null;
-let selectedUser = document.getElementById("user").value;
-let currentCallId = null;
-let incomingUserId = null;
-let isInCall = false;
+let currentCallerId = null;
 let timerInterval = null;
 let seconds = 0;
-let signalingInterval = null;
-let callType = 'audio';
-let onlineCheckInterval = null;
-let messageCheckInterval = null;
-let incomingCheckInterval = null;
+let callStatusInterval = null;
 
-// Audio visualization
-let audioContext = null;
-let analyser = null;
-let source = null;
-let animationFrame = null;
-
-// DOM elements
+// Get DOM elements
 const chatBox = document.getElementById("chat");
 const msgInput = document.getElementById("msg");
-const localVideo = document.getElementById("localVideo");
-const remoteVideo = document.getElementById("remoteVideo");
-const videoContainer = document.getElementById("videoContainer");
-const callTimer = document.getElementById("callTimer");
-const timerDisplay = document.getElementById("timer");
-const endCallBtn = document.getElementById("endCallBtn");
-const audioCallBtn = document.getElementById("audioCallBtn");
-const videoCallBtn = document.getElementById("videoCallBtn");
-const audioIndicators = document.getElementById("audioIndicators");
-const localAudioStatus = document.getElementById("localAudioStatus");
-const localAudioText = document.getElementById("localAudioText");
-const remoteAudioStatus = document.getElementById("remoteAudioStatus");
-const remoteAudioText = document.getElementById("remoteAudioText");
-const remoteWave = document.getElementById("remoteWave");
-const audioLevel = document.getElementById("audioLevel");
-const incomingScreen = document.getElementById("incomingScreen");
+const selectedUserSelect = document.getElementById("user");
+const incomingModal = document.getElementById("incomingModal");
 const incomingName = document.getElementById("incomingName");
-const ringtone = document.getElementById("ringtone");
-const callStatusIndicator = document.getElementById("callStatusIndicator");
-const callStatusText = document.getElementById("callStatusText");
+const callTimer = document.getElementById("callTimer");
+const timerSpan = document.getElementById("timer");
 
-// Initialize
-window.onload = function() {
-    console.log("Admin app initialized");
-    
-    // Start polling
-    startPolling();
-    
-    // Add event listeners
-    document.getElementById("user").addEventListener("change", function() {
-        selectedUser = this.value;
-        loadChat();
-    });
-    
-    // Check media permissions
-    checkMediaPermissions();
-    
-    // Ping server every 30 seconds
-    setInterval(pingServer, 30000);
+// WebRTC Configuration
+const configuration = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
+    ]
 };
 
-function startPolling() {
-    // Check for online users every 5 seconds
-    onlineCheckInterval = setInterval(checkOnlineUsers, 5000);
-    
-    // Load messages every 2 seconds
-    messageCheckInterval = setInterval(loadChat, 2000);
-    
-    // Check for incoming calls every 2 seconds
-    incomingCheckInterval = setInterval(checkIncomingCall, 2000);
-    
-    // Check signaling events every 1 second
-    signalingInterval = setInterval(checkSignalingEvents, 1000);
+// Media permissions state
+let mediaPermissions = {
+    audio: false,
+    video: false
+};
+
+let pendingCallData = null;
+
+// ---------- Helper Functions ----------
+function debugLog(...args) {
+    console.log(...args);
 }
 
-async function pingServer() {
+async function checkMediaPermissions() {
     try {
-        await fetch("/api/ping", { method: "POST" });
-    } catch (err) {
-        console.error("Ping failed:", err);
-    }
-}
-
-async function checkOnlineUsers() {
-    try {
-        const response = await fetch("/api/online-users");
-        const users = await response.json();
-        
-        // Update user list with online status
-        const select = document.getElementById("user");
-        const currentValue = select.value;
-        
-        for (let i = 0; i < select.options.length; i++) {
-            const option = select.options[i];
-            const userId = option.value;
-            const user = users.find(u => u.id === userId);
-            
-            if (user) {
-                option.textContent = user.online ? 
-                    `${user.name} (Online)` : 
-                    `${user.name} (Offline)`;
-                
-                if (user.in_call_with) {
-                    option.textContent += ` - In call`;
-                }
-            }
+        // Test audio
+        try {
+            const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            mediaPermissions.audio = true;
+            audioStream.getTracks().forEach(track => track.stop());
+            debugLog('Audio permission granted');
+        } catch (audioErr) {
+            mediaPermissions.audio = false;
+            debugLog('Audio permission error:', audioErr.message);
         }
         
-        select.value = currentValue;
+        // Test video
+        try {
+            const videoStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+            mediaPermissions.video = true;
+            videoStream.getTracks().forEach(track => track.stop());
+            debugLog('Video permission granted');
+        } catch (videoErr) {
+            mediaPermissions.video = false;
+            debugLog('Video permission error:', videoErr.message);
+        }
+        
+        // Update button states
+        updateButtonStates();
+        
+        return mediaPermissions.audio;
     } catch (err) {
-        console.error("Failed to check online users:", err);
+        debugLog('Permission test failed:', err);
+        return false;
     }
 }
 
-function updateCallStatus(status) {
-    if (status === 'connected') {
-        callStatusIndicator.className = 'status-indicator status-connected';
-        callStatusText.innerText = 'In call';
-    } else {
-        callStatusIndicator.className = 'status-indicator status-disconnected';
-        callStatusText.innerText = 'Not in call';
-    }
-}
-
-function startTimer() {
-    callTimer.style.display = "block";
-    seconds = 0;
-    timerDisplay.innerText = "00:00";
+function updateButtonStates() {
+    const audioBtn = document.getElementById('audioCallBtn');
+    const videoBtn = document.getElementById('videoCallBtn');
     
-    if (timerInterval) clearInterval(timerInterval);
-    
-    timerInterval = setInterval(() => {
-        seconds++;
-        let mins = Math.floor(seconds / 60);
-        let secs = seconds % 60;
-        timerDisplay.innerText = 
-            String(mins).padStart(2, '0') + ":" + String(secs).padStart(2, '0');
-    }, 1000);
+    if (audioBtn) audioBtn.disabled = !mediaPermissions.audio;
+    if (videoBtn) videoBtn.disabled = !mediaPermissions.video;
 }
 
-function stopTimer() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
+// ---------- API calls for WebRTC signaling ----------
+async function apiPost(url, data) {
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || `HTTP ${res.status}`);
+        }
+        return await res.json();
+    } catch (err) {
+        debugLog('API POST error:', url, err);
+        return { error: err.message };
     }
-    seconds = 0;
-    timerDisplay.innerText = "00:00";
-    callTimer.style.display = "none";
 }
 
-async function sendMsg() {
-    if (!selectedUser) {
-        alert("Select a user first");
+// ---------- WebRTC Call Functions ----------
+async function makeAudioCall() {
+    const target = selectedUserSelect.value;
+    if (!target) {
+        alert('Please select a user first');
+        return;
+    }
+    await initiateCall(target, false);
+}
+
+async function makeVideoCall() {
+    const target = selectedUserSelect.value;
+    if (!target) {
+        alert('Please select a user first');
+        return;
+    }
+    await initiateCall(target, true);
+}
+
+async function initiateCall(target, withVideo) {
+    if (currentCall) {
+        alert('You are already in a call');
         return;
     }
 
-    const message = msgInput.value.trim();
-    if (!message) return;
-
-    try {
-        const formData = new URLSearchParams();
-        formData.append("receiver", selectedUser);
-        formData.append("message", message);
-
-        await fetch("/send", {
-            method: "POST",
-            headers: {"Content-Type": "application/x-www-form-urlencoded"},
-            body: formData
-        });
-        
-        msgInput.value = "";
-    } catch (err) {
-        console.error("Failed to send message:", err);
-        alert("Failed to send message");
-    }
-}
-
-async function loadChat() {
-    if (!selectedUser) return;
-
-    try {
-        const response = await fetch("/messages/" + selectedUser);
-        const data = await response.json();
-        
-        chatBox.innerHTML = "";
-        data.forEach(m => {
-            const isMe = m[0] === 'Admin';
-            const align = isMe ? 'right' : 'left';
-            const bgColor = isMe ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f5f5f5';
-            const textColor = isMe ? 'white' : '#333';
-            
-            chatBox.innerHTML += `<div style="text-align:${align}; margin:8px 0;">
-                <span style="background:${bgColor}; color:${textColor}; padding:10px 18px; border-radius:${isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px'}; display:inline-block; max-width:80%; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    <b>${m[0]}:</b> ${m[1]}
-                </span>
-            </div>`;
-        });
-        
-        chatBox.scrollTop = chatBox.scrollHeight;
-    } catch (err) {
-        console.error("Failed to load messages:", err);
-    }
-}
-
-async function checkIncomingCall() {
-    if (isInCall) return;
-
-    try {
-        const response = await fetch("/check_call");
-        const call = await response.json();
-        
-        if (Object.keys(call).length === 0) {
-            incomingScreen.style.display = "none";
-            ringtone.pause();
-            currentCallId = null;
-            incomingUserId = null;
-            return;
-        }
-
-        if (currentCallId !== call.id) {
-            currentCallId = call.id;
-            incomingUserId = call.caller_id;
-            callType = call.call_type || 'audio';
-            
-            incomingName.innerHTML = `${call.name}<br><small style="font-size:16px; opacity:0.8;">${callType === 'video' ? '📹 Video Call' : '📞 Audio Call'}</small>`;
-            
-            incomingScreen.style.display = "block";
-            
-            // Play ringtone
-            ringtone.play().catch(e => console.log("Auto-play prevented"));
-        }
-    } catch (err) {
-        console.error("Failed to check incoming call:", err);
-    }
-}
-
-async function checkSignalingEvents() {
-    if (!isInCall && !incomingUserId) return;
+    debugLog('Initiating call to', target, 'with video:', withVideo);
     
     try {
-        const response = await fetch("/webrtc/events");
-        const events = await response.json();
-        
-        for (const event of events) {
-            await handleSignalingEvent(event);
-        }
-    } catch (err) {
-        console.error("Failed to check signaling events:", err);
-    }
-}
-
-async function handleSignalingEvent(event) {
-    console.log("Signaling event:", event);
-    
-    switch (event.type) {
-        case "offer":
-            if (peerConnection) {
-                try {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(event.offer));
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    
-                    await fetch("/webrtc/answer", {
-                        method: "POST",
-                        headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({
-                            target: event.from,
-                            answer: peerConnection.localDescription
-                        })
-                    });
-                } catch (err) {
-                    console.error("Error handling offer:", err);
-                }
-            }
-            break;
-            
-        case "answer":
-            if (peerConnection) {
-                try {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(event.answer));
-                } catch (err) {
-                    console.error("Error handling answer:", err);
-                }
-            }
-            break;
-            
-        case "ice":
-            if (peerConnection) {
-                try {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(event.candidate));
-                } catch (err) {
-                    console.error("Error adding ICE candidate:", err);
-                }
-            }
-            break;
-            
-        case "call_ended":
-            alert("Call ended by other user");
-            endCall();
-            break;
-    }
-}
-
-async function acceptCall() {
-    incomingScreen.style.display = "none";
-    ringtone.pause();
-    
-    try {
-        await fetch("/webrtc/call/accept", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ caller_id: incomingUserId })
-        });
-        
-        await startCall(callType === 'video');
-    } catch (err) {
-        console.error("Failed to accept call:", err);
-        alert("Failed to accept call");
-    }
-}
-
-function rejectCall() {
-    incomingScreen.style.display = "none";
-    ringtone.pause();
-    
-    fetch("/reject_call/" + currentCallId)
-        .catch(err => console.error("Failed to reject call:", err));
-}
-
-async function startAudioCall() {
-    await initiateCall(false);
-}
-
-async function startVideoCall() {
-    await initiateCall(true);
-}
-
-async function initiateCall(withVideo) {
-    if (isInCall) {
-        alert("You are already in a call");
-        return;
-    }
-    
-    if (!selectedUser) {
-        alert("Select a user first");
-        return;
-    }
-    
-    callType = withVideo ? 'video' : 'audio';
-    
-    try {
-        const formData = new URLSearchParams();
-        formData.append("receiver", selectedUser);
-        formData.append("call_type", callType);
-        
+        // First, notify server to start call
         const response = await fetch("/start_call", {
             method: "POST",
             headers: {"Content-Type": "application/x-www-form-urlencoded"},
-            body: formData
+            body: "receiver=" + target + "&call_type=" + (withVideo ? 'video' : 'audio')
         });
         
         const data = await response.json();
         
         if (data.status === "calling") {
-            // Show calling indicator
-            alert(`Calling... (${callType} call)`);
-            
-            // Wait for acceptance (will be handled by signaling)
-            setTimeout(() => {
-                if (!isInCall) {
-                    alert("No answer");
-                    fetch("/end_call", { method: "POST" });
-                }
-            }, 30000);
+            alert(`Calling user...`);
+            // Start waiting for acceptance
+            startWaitingForAcceptance(target, withVideo);
         }
     } catch (err) {
-        console.error("Failed to initiate call:", err);
-        alert("Failed to start call");
+        debugLog('Call initiation error:', err);
+        alert('Failed to start call: ' + err.message);
     }
 }
 
-async function startCall(withVideo) {
+function startWaitingForAcceptance(target, withVideo) {
+    if (callStatusInterval) clearInterval(callStatusInterval);
+    
+    callStatusInterval = setInterval(async () => {
+        try {
+            const res = await fetch("/call_status");
+            const status = await res.json();
+            
+            if (status === "accepted") {
+                clearInterval(callStatusInterval);
+                await startCall(target, withVideo, false);
+            } else if (status === "rejected") {
+                clearInterval(callStatusInterval);
+                alert("Call was rejected");
+            }
+        } catch (err) {
+            debugLog('Error checking call status:', err);
+        }
+    }, 1000);
+}
+
+async function startCall(target, withVideo, isAnswerer = false) {
     try {
-        isInCall = true;
-        updateCallStatus('connected');
-        
-        // Request media permissions
+        // Request media
         const constraints = {
             audio: true,
-            video: withVideo ? {
+            video: withVideo && mediaPermissions.video ? {
                 width: { ideal: 640 },
-                height: { ideal: 480 },
-                facingMode: "user"
+                height: { ideal: 480 }
             } : false
         };
         
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        debugLog('Media access granted');
         
-        // Show local video
-        localVideo.srcObject = localStream;
+        // Show local video if video call
+        if (withVideo && mediaPermissions.video) {
+            showLocalVideo();
+        }
         
         // Create peer connection
-        peerConnection = new RTCPeerConnection(configuration);
-        remoteStream = new MediaStream();
-        remoteVideo.srcObject = remoteStream;
+        await createPeerConnection(target);
         
-        // Add local tracks
-        localStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, localStream);
-        });
+        currentCall = { with: target, type: withVideo ? 'video' : 'audio' };
         
-        // Handle remote tracks
-        peerConnection.ontrack = event => {
-            event.streams[0].getTracks().forEach(track => {
-                remoteStream.addTrack(track);
-                console.log("Added remote track:", track.kind);
-                
-                if (track.kind === 'audio') {
-                    remoteAudioStatus.className = 'audio-status audio-active';
-                    remoteAudioText.innerHTML = 'Receiving audio ✓';
-                    remoteWave.style.display = 'flex';
-                }
-            });
-        };
-        
-        // Handle ICE candidates
-        peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                fetch("/webrtc/ice", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({
-                        target: incomingUserId || selectedUser,
-                        candidate: event.candidate
-                    })
-                });
-            }
-        };
-        
-        // Connection state changes
-        peerConnection.onconnectionstatechange = () => {
-            console.log("Connection state:", peerConnection.connectionState);
-            if (peerConnection.connectionState === 'connected') {
-                startTimer();
-            } else if (peerConnection.connectionState === 'disconnected' ||
-                       peerConnection.connectionState === 'failed' ||
-                       peerConnection.connectionState === 'closed') {
-                if (isInCall) {
-                    alert("Call disconnected");
-                    endCall();
-                }
-            }
-        };
-        
-        // ICE connection state
-        peerConnection.oniceconnectionstatechange = () => {
-            console.log("ICE connection state:", peerConnection.iceConnectionState);
-        };
-        
-        // Show video container
-        videoContainer.style.display = 'flex';
-        
-        // If we initiated the call (not answering), create offer
-        if (!incomingUserId) {
+        // If not answerer, send offer
+        if (!isAnswerer) {
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
-            
-            await fetch("/webrtc/offer", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    target: selectedUser,
-                    offer: peerConnection.localDescription,
-                    call_type: withVideo ? 'video' : 'audio'
-                })
+            await apiPost('/api/webrtc/offer', {
+                to: target,
+                offer: peerConnection.localDescription
             });
         }
         
-        // Show audio indicators
-        audioIndicators.style.display = 'block';
+        // Update UI
+        updateCallStatus(true);
+        startTimer();
         
-        // Update local audio status
-        localAudioStatus.className = 'audio-status audio-active';
-        localAudioText.innerHTML = withVideo ? 'Connected (Video) ✓' : 'Connected (Audio) ✓';
-        
-        // Show end button
-        endCallBtn.style.display = "inline-block";
-        
-        // Start audio visualization
-        startAudioVisualization(localStream);
+        // Hide incoming modal if visible
+        incomingModal.classList.remove('active');
         
     } catch (err) {
-        console.error("Error starting call:", err);
+        debugLog('Media access error:', err);
         if (err.name === 'NotAllowedError') {
-            alert('Please allow camera and microphone access');
-        } else if (err.name === 'NotFoundError') {
-            alert('No camera or microphone found');
+            alert('Please allow camera/microphone access to make calls');
         } else {
             alert('Could not access media: ' + err.message);
         }
@@ -995,214 +504,434 @@ async function startCall(withVideo) {
     }
 }
 
-async function endCall() {
-    // Notify server
-    try {
-        await fetch("/webrtc/call/end", { method: "POST" });
-    } catch (err) {
-        console.error("Failed to notify server:", err);
+async function createPeerConnection(target) {
+    peerConnection = new RTCPeerConnection(configuration);
+    remoteStream = new MediaStream();
+    
+    // Add local tracks
+    localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
+    });
+    
+    // Handle remote tracks
+    peerConnection.ontrack = event => {
+        debugLog('Received remote track:', event.track.kind);
+        event.streams[0].getTracks().forEach(track => {
+            remoteStream.addTrack(track);
+        });
+        
+        // Show remote video if video call
+        if (currentCall && currentCall.type === 'video') {
+            showRemoteVideo();
+        }
+    };
+    
+    // Handle ICE candidates
+    peerConnection.onicecandidate = event => {
+        if (event.candidate) {
+            debugLog('Sending ICE candidate');
+            apiPost('/api/webrtc/ice', {
+                to: target,
+                candidate: event.candidate
+            });
+        }
+    };
+    
+    // Connection state changes
+    peerConnection.onconnectionstatechange = () => {
+        debugLog('Connection state:', peerConnection.connectionState);
+        if (peerConnection.connectionState === 'connected') {
+            debugLog('Call connected!');
+        } else if (peerConnection.connectionState === 'disconnected' ||
+                   peerConnection.connectionState === 'failed' ||
+                   peerConnection.connectionState === 'closed') {
+            endCall();
+        }
+    };
+}
+
+function showLocalVideo() {
+    let videoContainer = document.getElementById('videoContainer');
+    if (!videoContainer) {
+        videoContainer = document.createElement('div');
+        videoContainer.id = 'videoContainer';
+        document.body.appendChild(videoContainer);
     }
     
-    // Close peer connection
+    videoContainer.innerHTML = '';
+    
+    const localVideo = document.createElement('video');
+    localVideo.id = 'localVideo';
+    localVideo.srcObject = localStream;
+    localVideo.autoplay = true;
+    localVideo.muted = true;
+    localVideo.playsInline = true;
+    videoContainer.appendChild(localVideo);
+}
+
+function showRemoteVideo() {
+    let videoContainer = document.getElementById('videoContainer');
+    if (!videoContainer) return;
+    
+    const remoteVideo = document.createElement('video');
+    remoteVideo.id = 'remoteVideo';
+    remoteVideo.srcObject = remoteStream;
+    remoteVideo.autoplay = true;
+    remoteVideo.playsInline = true;
+    videoContainer.appendChild(remoteVideo);
+}
+
+function startTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    seconds = 0;
+    if (timerSpan) timerSpan.textContent = '00:00';
+    if (callTimer) callTimer.style.display = 'block';
+    
+    timerInterval = setInterval(() => {
+        seconds++;
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        if (timerSpan) {
+            timerSpan.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+    }, 1000);
+}
+
+function endCall() {
+    debugLog('Ending call');
+    
+    // Notify server
+    if (currentCall) {
+        fetch("/end_call", { method: "POST" });
+        apiPost('/api/webrtc/hangup', { to: currentCall.with });
+    }
+    
+    // Clean up peer connection
     if (peerConnection) {
         peerConnection.close();
         peerConnection = null;
     }
     
-    // Stop media tracks
+    // Stop local stream
     if (localStream) {
-        localStream.getTracks().forEach(track => {
-            track.stop();
-            console.log("Stopped track:", track.kind);
-        });
+        localStream.getTracks().forEach(t => t.stop());
         localStream = null;
     }
     
-    // Hide video elements
-    localVideo.srcObject = null;
-    remoteVideo.srcObject = null;
-    videoContainer.style.display = 'none';
-    
-    // Hide audio indicators
-    audioIndicators.style.display = 'none';
-    
-    // Stop audio visualization
-    if (animationFrame) cancelAnimationFrame(animationFrame);
-    if (source) source.disconnect();
-    if (audioContext) audioContext.close();
-    audioContext = null;
+    // Remove video elements
+    const videoContainer = document.getElementById('videoContainer');
+    if (videoContainer) videoContainer.remove();
     
     // Stop timer
-    stopTimer();
-    
-    // Hide end button
-    endCallBtn.style.display = "none";
-    
-    // Reset status indicators
-    localAudioStatus.className = 'audio-status audio-inactive';
-    localAudioText.innerHTML = 'Not connected';
-    remoteAudioStatus.className = 'audio-status audio-inactive';
-    remoteAudioText.innerHTML = 'Waiting for user...';
-    remoteWave.style.display = 'none';
-    
-    // Update state
-    isInCall = false;
-    incomingUserId = null;
-    currentCallId = null;
-    updateCallStatus('disconnected');
-}
-
-function startAudioVisualization(stream) {
-    if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
     }
     
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
+    // Hide timer
+    if (callTimer) callTimer.style.display = 'none';
     
-    source = audioContext.createMediaStreamSource(stream);
-    source.connect(analyser);
+    // Update UI
+    updateCallStatus(false);
     
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    // Clear pending call
+    pendingCallData = null;
+    currentCallerId = null;
+    currentCall = null;
     
-    function updateVisualization() {
-        if (!analyser) return;
-        
-        analyser.getByteFrequencyData(dataArray);
-        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        const level = Math.round((average / 255) * 100);
-        
-        audioLevel.innerHTML = `Audio level: ${level}%`;
-        
-        if (level > 5) {
-            localAudioStatus.className = 'audio-status audio-active';
-            localAudioText.innerHTML = 'Speaking ✓';
-        }
-        
-        animationFrame = requestAnimationFrame(updateVisualization);
+    // Clear call status interval
+    if (callStatusInterval) {
+        clearInterval(callStatusInterval);
+        callStatusInterval = null;
     }
     
-    updateVisualization();
+    debugLog('Call ended');
 }
 
-function testMicrophone() {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-            // Play a test sound
-            const testAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = testAudioContext.createOscillator();
-            const gainNode = testAudioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(testAudioContext.destination);
-            
-            oscillator.frequency.value = 440;
-            gainNode.gain.value = 0.5;
-            
-            oscillator.start();
-            oscillator.stop(testAudioContext.currentTime + 0.5);
-            
-            // Show success
-            localAudioStatus.className = 'audio-status audio-active';
-            localAudioText.innerHTML = 'Working ✓';
-            
-            setTimeout(() => {
-                stream.getTracks().forEach(track => track.stop());
-            }, 1000);
-        })
-        .catch(err => {
-            alert('Microphone not accessible: ' + err.message);
-        });
-}
-
-function playTestSound() {
-    const testAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = testAudioContext.createOscillator();
-    const gainNode = testAudioContext.createGain();
+function updateCallStatus(inCall) {
+    const indicator = document.getElementById('callStatusIndicator');
+    const text = document.getElementById('callStatusText');
+    const endCallBtn = document.getElementById('endCallBtn');
     
-    oscillator.connect(gainNode);
-    gainNode.connect(testAudioContext.destination);
-    
-    oscillator.frequency.value = 440;
-    gainNode.gain.value = 0.5;
-    
-    oscillator.start();
-    oscillator.stop(testAudioContext.currentTime + 0.5);
+    if (inCall) {
+        if (indicator) indicator.className = 'status-indicator status-connected';
+        if (text) text.innerText = 'In call';
+        if (endCallBtn) endCallBtn.style.display = 'inline-block';
+    } else {
+        if (indicator) indicator.className = 'status-indicator status-disconnected';
+        if (text) text.innerText = 'Not in call';
+        if (endCallBtn) endCallBtn.style.display = 'none';
+    }
 }
 
-function testCamera() {
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-            // Create temporary video element
-            const testVideo = document.createElement('video');
-            testVideo.srcObject = stream;
-            testVideo.autoplay = true;
-            testVideo.playsInline = true;
-            testVideo.style.position = 'fixed';
-            testVideo.style.top = '50%';
-            testVideo.style.left = '50%';
-            testVideo.style.transform = 'translate(-50%, -50%)';
-            testVideo.style.width = 'min(400px, 90%)';
-            testVideo.style.zIndex = '2000';
-            testVideo.style.border = '3px solid #667eea';
-            testVideo.style.borderRadius = '12px';
-            document.body.appendChild(testVideo);
-            
-            // Add close button
-            const closeBtn = document.createElement('button');
-            closeBtn.innerHTML = 'Close';
-            closeBtn.style.position = 'fixed';
-            closeBtn.style.top = 'calc(50% + 170px)';
-            closeBtn.style.left = '50%';
-            closeBtn.style.transform = 'translateX(-50%)';
-            closeBtn.style.zIndex = '2001';
-            closeBtn.style.padding = '12px 30px';
-            closeBtn.style.background = '#dc3545';
-            closeBtn.style.color = 'white';
-            closeBtn.style.border = 'none';
-            closeBtn.style.borderRadius = '30px';
-            closeBtn.style.cursor = 'pointer';
-            closeBtn.onclick = function() {
-                stream.getTracks().forEach(track => track.stop());
-                testVideo.remove();
-                this.remove();
-            };
-            document.body.appendChild(closeBtn);
-            
-            alert('✅ Camera is working!');
-        })
-        .catch(err => {
-            alert('❌ Camera error: ' + err.message);
-        });
-}
-
-async function checkMediaPermissions() {
+// ---------- Incoming Call Handlers ----------
+function showIncomingCall(callerId, callerName, callType) {
+    debugLog('Showing incoming call from', callerName);
+    pendingCallData = { callerId, callerName, callType };
+    currentCallerId = callerId;
+    
+    incomingName.innerHTML = `${callerName}<br><small style="font-size:16px;">${callType === 'video' ? '📹 Video Call' : '📞 Audio Call'}</small>`;
+    incomingModal.classList.add('active');
+    
+    // Play ringtone (simple beep)
     try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const hasAudio = devices.some(d => d.kind === 'audioinput');
-        const hasVideo = devices.some(d => d.kind === 'videoinput');
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.value = 440;
+        gainNode.gain.value = 0.3;
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.5);
         
-        console.log("Audio devices:", hasAudio, "Video devices:", hasVideo);
+        // Repeat ringtone
+        const interval = setInterval(() => {
+            if (!incomingModal.classList.contains('active')) {
+                clearInterval(interval);
+                return;
+            }
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = 440;
+            gain.gain.value = 0.3;
+            osc.start();
+            osc.stop(audioContext.currentTime + 0.5);
+        }, 2000);
+        
+        // Store interval to clear later
+        window.ringtoneInterval = interval;
     } catch (err) {
-        console.error("Failed to enumerate devices:", err);
+        debugLog('Ringtone error:', err);
     }
 }
 
-// Cleanup on page unload
-window.onbeforeunload = function() {
-    if (onlineCheckInterval) clearInterval(onlineCheckInterval);
-    if (messageCheckInterval) clearInterval(messageCheckInterval);
-    if (incomingCheckInterval) clearInterval(incomingCheckInterval);
-    if (signalingInterval) clearInterval(signalingInterval);
-    if (isInCall) endCall();
+async function acceptIncomingCall() {
+    if (!pendingCallData) return;
+    
+    // Clear ringtone
+    if (window.ringtoneInterval) {
+        clearInterval(window.ringtoneInterval);
+        window.ringtoneInterval = null;
+    }
+    
+    const { callerId, callType } = pendingCallData;
+    const withVideo = callType === 'video';
+    
+    // Accept the call in database
+    try {
+        // First, find the call ID
+        const res = await fetch("/check_call");
+        const call = await res.json();
+        
+        if (call.id) {
+            await fetch("/accept_call/" + call.id);
+            await startCall(callerId, withVideo, true);
+        }
+    } catch (err) {
+        debugLog('Error accepting call:', err);
+    }
+    
+    incomingModal.classList.remove('active');
+    pendingCallData = null;
+}
+
+async function rejectIncomingCall() {
+    if (!pendingCallData) return;
+    
+    // Clear ringtone
+    if (window.ringtoneInterval) {
+        clearInterval(window.ringtoneInterval);
+        window.ringtoneInterval = null;
+    }
+    
+    try {
+        const res = await fetch("/check_call");
+        const call = await res.json();
+        
+        if (call.id) {
+            await fetch("/reject_call/" + call.id);
+        }
+    } catch (err) {
+        debugLog('Error rejecting call:', err);
+    }
+    
+    incomingModal.classList.remove('active');
+    pendingCallData = null;
+    currentCallerId = null;
+}
+
+// ---------- Polling Functions ----------
+async function checkIncomingCalls() {
+    try {
+        const res = await fetch("/check_call");
+        const call = await res.json();
+        
+        if (call && call.id && !currentCall && !incomingModal.classList.contains('active')) {
+            // New incoming call
+            showIncomingCall(call.caller_id, call.name, call.call_type);
+        }
+    } catch (err) {
+        debugLog('Error checking incoming calls:', err);
+    }
+}
+
+async function pollWebRTCEvents() {
+    try {
+        const res = await fetch('/api/webrtc/events');
+        if (!res.ok) return;
+        
+        const events = await res.json();
+        for (let ev of events) {
+            await handleWebRTCEvent(ev);
+        }
+    } catch (err) {
+        debugLog('Error polling events:', err);
+    }
+}
+
+async function handleWebRTCEvent(ev) {
+    debugLog('WebRTC event:', ev);
+    
+    switch (ev.type) {
+        case 'offer':
+            if (currentCall) {
+                debugLog('Already in call, ignoring offer');
+                return;
+            }
+            
+            const withVideo = ev.offer.sdp.includes('video');
+            // This should be handled by checkIncomingCalls, but just in case
+            if (!incomingModal.classList.contains('active')) {
+                // Get caller name
+                try {
+                    const res = await fetch("/check_call");
+                    const call = await res.json();
+                    if (call && call.id) {
+                        showIncomingCall(ev.from, call.name, withVideo ? 'video' : 'audio');
+                    }
+                } catch (err) {
+                    debugLog('Error getting caller info:', err);
+                }
+            }
+            break;
+            
+        case 'answer':
+            if (peerConnection) {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(ev.answer));
+            }
+            break;
+            
+        case 'ice':
+            if (peerConnection) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(ev.candidate));
+                } catch (err) {
+                    debugLog('Error adding ICE candidate:', err);
+                }
+            }
+            break;
+            
+        case 'hangup':
+            if (currentCall) {
+                alert('Call ended by other user');
+                endCall();
+            }
+            break;
+    }
+}
+
+// ---------- Chat Functions ----------
+function sendMsg() {
+    if (!selectedUserSelect.value) {
+        alert("Select user first");
+        return;
+    }
+    
+    const msg = msgInput.value.trim();
+    if (!msg) return;
+
+    fetch("/send", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "receiver=" + selectedUserSelect.value + "&message=" + encodeURIComponent(msg)
+    })
+    .then(() => { msgInput.value = ""; });
+}
+
+function loadChat() {
+    if (!selectedUserSelect.value) return;
+    
+    fetch("/messages/" + selectedUserSelect.value)
+    .then(r => r.json())
+    .then(data => {
+        if (data && data.length > 0) {
+            chatBox.innerHTML = "";
+            data.forEach(m => {
+                const isMe = m[0] === 'Admin';
+                const align = isMe ? 'right' : 'left';
+                const bgColor = isMe ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f5f5f5';
+                const textColor = isMe ? 'white' : '#333';
+                chatBox.innerHTML += `
+                    <div style="text-align:${align}; margin:8px 0;">
+                        <span style="background:${bgColor}; color:${textColor}; padding:10px 18px; border-radius:${isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px'}; display:inline-block; max-width:80%;">
+                            <b>${m[0]}:</b> ${m[1]}
+                        </span>
+                    </div>
+                `;
+            });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    });
+}
+
+// ---------- Initialization ----------
+window.onload = async function() {
+    debugLog('Admin app initializing...');
+    
+    await checkMediaPermissions();
+    
+    // Start polling for incoming calls every 1 second
+    setInterval(checkIncomingCalls, 1000);
+    
+    // Start polling for WebRTC events every 500ms
+    setInterval(pollWebRTCEvents, 500);
+    
+    // Poll messages every 2 seconds
+    setInterval(loadChat, 2000);
+    
+    // Ping to keep session alive
+    setInterval(() => {
+        fetch('/api/webrtc/ping', { method: 'POST' });
+    }, 30000);
+    
+    // Check call status periodically
+    setInterval(async () => {
+        if (currentCall) {
+            try {
+                const res = await fetch("/call_status");
+                const status = await res.json();
+                if (status === "ended" || status === "rejected") {
+                    endCall();
+                }
+            } catch (err) {
+                debugLog('Error checking call status:', err);
+            }
+        }
+    }, 2000);
+    
+    loadChat();
 };
 
-// Enter key to send message
-msgInput.addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
-        sendMsg();
-    }
-});
+// Make functions global for HTML buttons
+window.makeAudioCall = makeAudioCall;
+window.makeVideoCall = makeVideoCall;
+window.endCall = endCall;
+window.sendMsg = sendMsg;
+window.acceptIncomingCall = acceptIncomingCall;
+window.rejectIncomingCall = rejectIncomingCall;
 </script>
 </body>
 </html>
