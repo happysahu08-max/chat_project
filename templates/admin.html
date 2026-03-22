@@ -36,6 +36,7 @@
         .container { padding: 15px; }
         button { padding: 12px 20px; }
         input, select { font-size: 16px; }
+        .incoming-buttons button { padding: 12px 20px !important; font-size: 16px !important; }
     }
     
     #chat { 
@@ -60,7 +61,8 @@
         color: white;
     }
     
-    button:hover { transform: translateY(-2px); }
+    button:hover:not(:disabled) { transform: translateY(-2px); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
     
     input, select { 
         padding: 12px; 
@@ -76,6 +78,8 @@
         margin-bottom: 20px;
         padding-bottom: 20px;
         border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+        flex-wrap: wrap;
+        gap: 15px;
     }
     
     .status-indicator {
@@ -173,6 +177,7 @@
         font-size: 20px;
         border-radius: 50px;
         min-width: 200px;
+        margin: 10px;
     }
     
     .accept-btn {
@@ -223,6 +228,44 @@
     
     #endCallBtn {
         display: none;
+    }
+    
+    /* Call Screen */
+    .call-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        z-index: 10000;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+    }
+    
+    .call-screen.active {
+        display: flex;
+    }
+    
+    .call-timer {
+        font-size: 72px;
+        font-weight: bold;
+        margin-bottom: 40px;
+        font-family: 'Courier New', monospace;
+        background: rgba(255,255,255,0.1);
+        padding: 20px 40px;
+        border-radius: 60px;
+    }
+    
+    .call-end-btn {
+        background: #ff6b6b;
+        padding: 20px 60px;
+        font-size: 24px;
+        border-radius: 60px;
+        margin-top: 40px;
     }
 </style>
 </head>
@@ -277,6 +320,14 @@
     </div>
 </div>
 
+<!-- Call Screen -->
+<div class="call-screen" id="callScreen">
+    <div class="call-info" id="callInfo">Call with User</div>
+    <div class="call-type" id="callTypeDisplay">Audio Call</div>
+    <div class="call-timer" id="callTimerDisplay">00:00</div>
+    <button class="call-end-btn" onclick="endCall()">End Call</button>
+</div>
+
 <script>
 // ============================================
 // ADMIN APPLICATION WITH WORKING WEBRTC
@@ -290,6 +341,7 @@ let currentCallerId = null;
 let timerInterval = null;
 let seconds = 0;
 let callStatusInterval = null;
+let ringtoneInterval = null;
 
 // Get DOM elements
 const chatBox = document.getElementById("chat");
@@ -299,6 +351,10 @@ const incomingModal = document.getElementById("incomingModal");
 const incomingName = document.getElementById("incomingName");
 const callTimer = document.getElementById("callTimer");
 const timerSpan = document.getElementById("timer");
+const callScreen = document.getElementById("callScreen");
+const callTimerDisplay = document.getElementById("callTimerDisplay");
+const callInfo = document.getElementById("callInfo");
+const callTypeDisplay = document.getElementById("callTypeDisplay");
 
 // WebRTC Configuration
 const configuration = {
@@ -411,7 +467,6 @@ async function initiateCall(target, withVideo) {
     debugLog('Initiating call to', target, 'with video:', withVideo);
     
     try {
-        // First, notify server to start call
         const response = await fetch("/start_call", {
             method: "POST",
             headers: {"Content-Type": "application/x-www-form-urlencoded"},
@@ -422,7 +477,6 @@ async function initiateCall(target, withVideo) {
         
         if (data.status === "calling") {
             alert(`Calling user...`);
-            // Start waiting for acceptance
             startWaitingForAcceptance(target, withVideo);
         }
     } catch (err) {
@@ -454,7 +508,6 @@ function startWaitingForAcceptance(target, withVideo) {
 
 async function startCall(target, withVideo, isAnswerer = false) {
     try {
-        // Request media
         const constraints = {
             audio: true,
             video: withVideo && mediaPermissions.video ? {
@@ -465,6 +518,9 @@ async function startCall(target, withVideo, isAnswerer = false) {
         
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
         debugLog('Media access granted');
+        
+        // Show call screen
+        showCallScreen(withVideo);
         
         // Show local video if video call
         if (withVideo && mediaPermissions.video) {
@@ -540,14 +596,18 @@ async function createPeerConnection(target) {
     // Connection state changes
     peerConnection.onconnectionstatechange = () => {
         debugLog('Connection state:', peerConnection.connectionState);
-        if (peerConnection.connectionState === 'connected') {
-            debugLog('Call connected!');
-        } else if (peerConnection.connectionState === 'disconnected' ||
+        if (peerConnection.connectionState === 'disconnected' ||
                    peerConnection.connectionState === 'failed' ||
                    peerConnection.connectionState === 'closed') {
             endCall();
         }
     };
+}
+
+function showCallScreen(withVideo) {
+    if (callInfo) callInfo.textContent = 'Call with User';
+    if (callTypeDisplay) callTypeDisplay.textContent = withVideo ? '📹 Video Call' : '📞 Audio Call';
+    if (callScreen) callScreen.classList.add('active');
 }
 
 function showLocalVideo() {
@@ -585,15 +645,16 @@ function startTimer() {
     if (timerInterval) clearInterval(timerInterval);
     seconds = 0;
     if (timerSpan) timerSpan.textContent = '00:00';
+    if (callTimerDisplay) callTimerDisplay.textContent = '00:00';
     if (callTimer) callTimer.style.display = 'block';
     
     timerInterval = setInterval(() => {
         seconds++;
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        if (timerSpan) {
-            timerSpan.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-        }
+        const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        if (timerSpan) timerSpan.textContent = timeStr;
+        if (callTimerDisplay) callTimerDisplay.textContent = timeStr;
     }, 1000);
 }
 
@@ -622,6 +683,9 @@ function endCall() {
     const videoContainer = document.getElementById('videoContainer');
     if (videoContainer) videoContainer.remove();
     
+    // Hide call screen
+    if (callScreen) callScreen.classList.remove('active');
+    
     // Stop timer
     if (timerInterval) {
         clearInterval(timerInterval);
@@ -643,6 +707,12 @@ function endCall() {
     if (callStatusInterval) {
         clearInterval(callStatusInterval);
         callStatusInterval = null;
+    }
+    
+    // Stop ringtone
+    if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
     }
     
     debugLog('Call ended');
@@ -673,36 +743,22 @@ function showIncomingCall(callerId, callerName, callType) {
     incomingName.innerHTML = `${callerName}<br><small style="font-size:16px;">${callType === 'video' ? '📹 Video Call' : '📞 Audio Call'}</small>`;
     incomingModal.classList.add('active');
     
-    // Play ringtone (simple beep)
+    // Play ringtone
     try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        oscillator.frequency.value = 440;
-        gainNode.gain.value = 0.3;
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.5);
+        function playBeep() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.frequency.value = 440;
+            gainNode.gain.value = 0.3;
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
         
-        // Repeat ringtone
-        const interval = setInterval(() => {
-            if (!incomingModal.classList.contains('active')) {
-                clearInterval(interval);
-                return;
-            }
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            osc.connect(gain);
-            gain.connect(audioContext.destination);
-            osc.frequency.value = 440;
-            gain.gain.value = 0.3;
-            osc.start();
-            osc.stop(audioContext.currentTime + 0.5);
-        }, 2000);
-        
-        // Store interval to clear later
-        window.ringtoneInterval = interval;
+        playBeep();
+        ringtoneInterval = setInterval(playBeep, 2000);
     } catch (err) {
         debugLog('Ringtone error:', err);
     }
@@ -712,17 +768,16 @@ async function acceptIncomingCall() {
     if (!pendingCallData) return;
     
     // Clear ringtone
-    if (window.ringtoneInterval) {
-        clearInterval(window.ringtoneInterval);
-        window.ringtoneInterval = null;
+    if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
     }
     
     const { callerId, callType } = pendingCallData;
     const withVideo = callType === 'video';
     
-    // Accept the call in database
     try {
-        // First, find the call ID
+        // Find the call ID and accept it
         const res = await fetch("/check_call");
         const call = await res.json();
         
@@ -732,6 +787,7 @@ async function acceptIncomingCall() {
         }
     } catch (err) {
         debugLog('Error accepting call:', err);
+        alert('Failed to accept call: ' + err.message);
     }
     
     incomingModal.classList.remove('active');
@@ -742,9 +798,9 @@ async function rejectIncomingCall() {
     if (!pendingCallData) return;
     
     // Clear ringtone
-    if (window.ringtoneInterval) {
-        clearInterval(window.ringtoneInterval);
-        window.ringtoneInterval = null;
+    if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
     }
     
     try {
@@ -763,14 +819,19 @@ async function rejectIncomingCall() {
     currentCallerId = null;
 }
 
-// ---------- Polling Functions ----------
+// ---------- CRITICAL: Poll for Incoming Calls ----------
 async function checkIncomingCalls() {
+    // Don't check if already in a call or already showing incoming modal
+    if (currentCall || incomingModal.classList.contains('active')) {
+        return;
+    }
+    
     try {
         const res = await fetch("/check_call");
         const call = await res.json();
         
-        if (call && call.id && !currentCall && !incomingModal.classList.contains('active')) {
-            // New incoming call
+        if (call && call.id) {
+            debugLog('Incoming call detected:', call);
             showIncomingCall(call.caller_id, call.name, call.call_type);
         }
     } catch (err) {
@@ -805,7 +866,6 @@ async function handleWebRTCEvent(ev) {
             const withVideo = ev.offer.sdp.includes('video');
             // This should be handled by checkIncomingCalls, but just in case
             if (!incomingModal.classList.contains('active')) {
-                // Get caller name
                 try {
                     const res = await fetch("/check_call");
                     const call = await res.json();
@@ -893,10 +953,10 @@ window.onload = async function() {
     
     await checkMediaPermissions();
     
-    // Start polling for incoming calls every 1 second
+    // CRITICAL: Poll for incoming calls every 1 second
     setInterval(checkIncomingCalls, 1000);
     
-    // Start polling for WebRTC events every 500ms
+    // Poll for WebRTC events every 500ms
     setInterval(pollWebRTCEvents, 500);
     
     // Poll messages every 2 seconds
@@ -907,13 +967,15 @@ window.onload = async function() {
         fetch('/api/webrtc/ping', { method: 'POST' });
     }, 30000);
     
-    // Check call status periodically
+    // Check call status periodically to detect when other user ends call
     setInterval(async () => {
         if (currentCall) {
             try {
                 const res = await fetch("/call_status");
                 const status = await res.json();
                 if (status === "ended" || status === "rejected") {
+                    debugLog('Call ended by remote user');
+                    alert('Call ended by other user');
                     endCall();
                 }
             } catch (err) {
